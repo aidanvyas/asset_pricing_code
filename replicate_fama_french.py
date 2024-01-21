@@ -6,6 +6,7 @@ from pandas.tseries.offsets import MonthEnd
 from scipy import stats
 import os
 
+
 def sz_bucket(row):
     """
     Helper function to assign a stock to the correct size bucket.
@@ -559,7 +560,6 @@ def compare_with_fama_french():
     for file in files_to_delete:
         if os.path.exists(file):
             os.remove(file)
-
 
 
 def replicate_fama_french():
