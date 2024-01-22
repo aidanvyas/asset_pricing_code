@@ -10,6 +10,7 @@ useful definitions which are employed here.
 import time
 from process_data import process_data
 from replicate_fama_french import replicate_fama_french
+from produce_results import produce_results
 
 
 def main():
@@ -21,18 +22,25 @@ def main():
     # Track the overall execution time.
     actual_start_time = time.time()
 
-    # Process data.
-    start_time = time.time()
-    process_data()
-    end_time = time.time()
-    print("Processed data.")
-    print("Time Elapsed: ", end_time - start_time)
+    # # Process data.
+    # start_time = time.time()
+    # process_data()
+    # end_time = time.time()
+    # print("Processed data.")
+    # print("Time Elapsed: ", end_time - start_time)
 
-    # Replicate the Fama-French factors.
+    # # Replicate the Fama-French factors.
+    # start_time = time.time()
+    # replicate_fama_french()
+    # end_time = time.time()
+    # print("Replicated Fama-French.")
+    # print("Time Elapsed: ", end_time - start_time)
+
+    # Produce the results (Fama-MacBeth regression, Fama-French-esque factors, and decile sorts).
     start_time = time.time()
-    replicate_fama_french()
+    produce_results()
     end_time = time.time()
-    print("Replicated Fama-French.")
+    print("Produced Results.")
     print("Time Elapsed: ", end_time - start_time)
 
     # Print total execution time.

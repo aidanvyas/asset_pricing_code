@@ -34,9 +34,39 @@ def process_compustat_data():
     - dltt: Long-Term Debt - Total
     - lct: Current Liabilities - Total
     - lo: Liabilities - Other - Total
+    - xido: Extraordinary Items and Discontinued Operations
+    - xi: Extraordinary Items
+    - do: Discontinued Operations
+    - ebit: Earnings Before Interest and Taxes
+    - oiadp: Operating Income After Depreciation
+    - dp: Depreciation and Amortization
+    - pi: Pretax Income
+    - spi: Special Items
+    - nopi: Nonoperating Income (Expense)
+    - ib: Income Before Extraordinary Items
+    - ni: Net Income (Loss)
+    - txt: Income Taxes - Total
+    - mii: Noncontrolling Interest (Income Account)
+    - act: Current Assets - Total
+    - rect: Receivables - Total
+    - invt: Inventories - Total
+    - che: Cash and Short-Term Investments
+    - aco: Current Assets - Other - Total
+    - ap: Accounts Payable - Trade
+    - lco: Current Liabilities - Other - Total
+    - dlc: Debt in Current Liabilities - Total
+    - txp: Income Taxes Payable
+    - ivao: Investment and Advances - Other
+    - oancf: Operating Activities - Net Cash Flow
+    - wcap: Working Capital (Balance Sheet)
+    - capx: Capital Expenditures
+    - dvt: Dividends - Total
+    - dv: Cash Dividends (Cash Flow)
+    - xrd: Research and Development Expense
+    - xad: Advertising Expense
 
     When I have created variables, those are denoted by using all upper-case.
-    The Compustat variables are also in all lower-case.
+    The original Compustat variables are in all lower-case.
     """
 
     # Read in the csv file.
@@ -129,6 +159,120 @@ def process_compustat_data():
 
     # INVESTMENT = percentage change in AT.
     comp['INVESTMENT'] = comp.groupby('gvkey')['AT'].pct_change()
+
+    # XIDO = xido, if missing, use xi + do (if missing set to 0).
+    comp['XIDO'] = np.where(
+        comp['xido'].isnull(),
+        (comp['xi'] + comp['do']),
+        comp['xido']
+    )
+
+    # EBIT = ebit, if missing, use oiadp, if missing, use EBITDA - dp.
+    comp['EBIT'] = np.where(
+        comp['ebit'].isnull(),
+        np.where(
+            comp['oiadp'].isnull(),
+            (comp['EBITDA'] - comp['dp']),
+            comp['oiadp']
+        ),
+        comp['ebit']
+    )
+
+    # PI = pi, if missing, use EBIT - xint + spi (if missing set to 0) + nopi (if missing set to 0).
+    comp['PI'] = np.where(
+        comp['pi'].isnull(),
+        (comp['EBIT'] - comp['xint'] + np.where(comp['spi'].isnull(), 0, comp['spi']) + np.where(comp['nopi'].isnull(), 0, comp['nopi'])),
+        comp['pi']
+    )
+
+    # NI = ib, if missing, use ni - XIDO, if missing, use PI - txt - mii (if missing set to 0).
+    comp['NI'] = np.where(
+        comp['ib'].isnull(),
+        np.where(
+            (comp['ni'] - comp['XIDO']).isnull(),
+            (comp['PI'] - comp['txt'] - np.where(comp['mii'].isnull(), 0, comp['mii'])),
+            (comp['ni'] - comp['XIDO'])
+        ),
+        comp['ib']
+    )
+
+    # CA = act, is missing, use rect + invt + che + aco.
+    comp['CA'] = np.where(
+        comp['act'].isnull(),
+        (comp['rect'] + comp['invt'] + comp['che'] + comp['aco']),
+        comp['act']
+    )
+
+    # COA = CA - che.
+    comp['COA'] = comp['CA'] - comp['che']
+
+    # CL = lct, if missing, use ap + dlc + txp + lco.
+    comp['CL'] = np.where(
+        comp['lct'].isnull(),
+        (comp['ap'] + comp['dlc'] + comp['txp'] + comp['lco']),
+        comp['lct']
+    )
+
+    # COL = CL - dlc (if missing set to 0).
+    comp['COL'] = comp['CL'] - np.where(comp['dlc'].isnull(), 0, comp['dlc'])
+
+    # COWC = COA - COL.
+    comp['COWC'] = comp['COA'] - comp['COL']
+
+    # NCAO = AT - CA - ivao.
+    comp['NCOA'] = comp['AT'] - comp['CA'] - comp['ivao']
+
+    # NCOL = lt - CL - dltt.
+    comp['NCOL'] = comp['lt'] - comp['CL'] - comp['dltt']
+
+    # NNCOA = NCOA - NCOL.
+    comp['NNCOA'] = comp['NCOA'] - comp['NCOL']
+
+    # OACC = NI - oancf, if missing, use the annual change in COWC + the annual change in NNCOA.
+    comp['OACC'] = np.where(
+        (comp['NI'] - comp['oancf']).isnull(),
+        (comp.groupby('gvkey')['COWC'].diff() + comp.groupby('gvkey')['NNCOA'].diff()),
+        (comp['NI'] - comp['oancf'])
+    )
+
+    # OCF = oancf, if missing, use NI - OACC, if missing, use NI + dp - wcap (if missing set to 0).
+    comp['OCF'] = np.where(
+        comp['oancf'].isnull(),
+        np.where(
+            (comp['NI'] - comp['OACC']).isnull(),
+            (comp['NI'] + comp['dp'] - np.where(comp['wcap'].isnull(), 0, comp['wcap'])),
+            (comp['NI'] - comp['OACC'])
+        ),
+        comp['oancf']
+    )
+
+    # Free Cash Flow = OCF - capx.
+    comp['FCF'] = comp['OCF'] - comp['capx']
+
+    # DEBT = dltt (if missing set to 0) + dlc (if missing set to 0).
+    comp['DEBT'] = np.where(comp['dltt'].isnull(), 0, comp['dltt']) + np.where(comp['dlc'].isnull(), 0, comp['dlc'])
+
+    # Net Debt = DEBT - che (if missing set to 0).
+    comp['NETDEBT'] = comp['DEBT'] - np.where(comp['che'].isnull(), 0, comp['che'])
+
+    # Total Dividends = dvt, if missing, use dv.
+    comp['DIVIDENDS'] = np.where(
+        comp['dvt'].isnull(),
+        comp['dv'],
+        comp['dvt']
+    )
+
+    # Cash-based Operating Profits = EBITDA + xrd (if missing set to 0) - OACC.
+    comp['COP'] = comp['EBITDA'] + np.where(comp['xrd'].isnull(), 0, comp['xrd']) - comp['OACC']
+
+    # Net Current Asset Value = CA - lt.
+    comp['NCAV'] = comp['CA'] - comp['lt']
+
+    # Free Cash Flow + Research and Development = FCF + xrd.
+    comp['FCF+XRD'] = comp['FCF'] + np.where(comp['xrd'].isnull(), 0, comp['xrd'])
+
+    # Cash-based Operating Profits - capx = COP - capx.
+    comp['COP-CAPX'] = comp['COP'] - comp['capx']
 
     # Save the dataframe to a csv.
     comp.to_csv('processed_comp_funda.csv', index=False)
@@ -334,12 +478,12 @@ def process_data():
     print("Processed Compustat data.")
     print("Time Elapsed: ", end_time - start_time)
 
-    # Process CRSP data.
-    start_time = time.time()
-    process_crsp_data()
-    end_time = time.time()
-    print("Processed CRSP data.")
-    print("Time Elapsed: ", end_time - start_time)
+    # # Process CRSP data.
+    # start_time = time.time()
+    # process_crsp_data()
+    # end_time = time.time()
+    # print("Processed CRSP data.")
+    # print("Time Elapsed: ", end_time - start_time)
 
     # Process CCM data.
     start_time = time.time()
