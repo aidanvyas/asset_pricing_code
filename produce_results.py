@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 import statsmodels.api as sm
 import time
+from replicate_fama_french import sz_bucket, factor_bucket, wavg
 
 
 def generate_variables():
@@ -15,7 +16,7 @@ def generate_variables():
     ccm_jun = pd.read_csv('processed_crsp_jun1.csv', parse_dates=['jdate'])
 
     # Calculate the free cash flow to enterprise value ratio.
-    ccm_jun['FCF_EV'] = ccm_jun['FCF'] * 1000 / (ccm_jun['dec_me'] + ccm_jun['NETDEBT'])
+    ccm_jun['FCF_EV'] = ccm_jun['FCF'] * 1000 / (ccm_jun['dec_me'] + ccm_jun['NETDEBT'] * 1000)
 
     # Calculate the net income to market equity ratio.
     ccm_jun['NI_ME'] = ccm_jun['NI'] * 1000 / ccm_jun['dec_me']
@@ -71,13 +72,23 @@ def generate_variables():
     # Calculate capital expenditures scaled by book equity.
     ccm_jun['capx_BE'] = ccm_jun['capx'] / ccm_jun['BE']
 
+    # Calculate cash-based operating profits to enterprise value ratio.
+    ccm_jun['COP_EV'] = ccm_jun['COP'] * 1000 / (ccm_jun['dec_me'] + ccm_jun['NETDEBT'] * 1000)
+
+    # Calculate free cash flow + research and development expenses to enterprise value ratio.
+    ccm_jun['FCF+xrd_EV'] = (ccm_jun['FCF'] + ccm_jun['xrd']) * 1000 / (ccm_jun['dec_me'] + ccm_jun['NETDEBT'] * 1000)
+
+    # Calculate the cash-based operating profits - capital expenditures to enterprise value ratio.
+    ccm_jun['COP-capx_EV'] = (ccm_jun['COP'] - ccm_jun['capx']) * 1000 / (ccm_jun['dec_me'] + ccm_jun['NETDEBT'] * 1000)
+
     # Save the dataframe to a csv file.
     ccm_jun.to_csv('processed_crsp_jun2.csv', index=False)
 
 
 def fama_macbeth_regression(predictors: List):
     """
-    This function runs the Fama-MacBeth regressions.
+    This function conducts Fama-MacBeth regressions.
+    As an input, it takes a list of signals to be put into the regression.
     """
 
     # Read in the csv files.
@@ -114,7 +125,7 @@ def fama_macbeth_regression(predictors: List):
     ccm3 = ccm3.drop(['dec_me'], axis=1)
 
     # State the controls.
-    controls = ['LOG_DEC_ME', 'BE_ME', 'MOMENTUM', 'INVESTMENT']
+    controls = ['LOG_DEC_ME', 'BE_ME', 'OP_BE', 'INVESTMENT', 'MOMENTUM']
 
     # Add the controls with the predictors.
     variables = controls + predictors
@@ -186,9 +197,184 @@ def fama_macbeth_regression(predictors: List):
     print(table)
 
 
+def create_fama_french_esque_factors(predictors: List):
+    """
+    This function creates Fama-French-esque factors.
+    As input, it takes a list of signals to be put into the regression.
+    """
+
+    # Read in the csv files.
+    ccm_jun = pd.read_csv('processed_crsp_jun2.csv', parse_dates=['jdate'])
+    crsp3 = pd.read_csv('processed_crsp_data.csv', low_memory=False)
+
+    # Select the universe NYSE common stocks with positive market equity.
+    nyse = ccm_jun[(ccm_jun['EXCHCD'] == 1) &
+                   (ccm_jun['me'] > 0) &
+                   (ccm_jun['dec_me'] > 0) &
+                   (ccm_jun['count'] >= 1) &
+                   ((ccm_jun['SHRCD'] == 10) | (ccm_jun['SHRCD'] == 11))]
+
+    # Get the size median breakpoints for each month.
+    nyse_size = nyse.groupby(['jdate'])['me'].median().to_frame().reset_index().rename(columns={'me': 'sizemedn'})
+
+    # Dictionary to store factor DataFrames.
+    factor_dfs = {}
+
+    # Iterate through the predictors.
+    for predictor in predictors:
+
+        # Get the BE_ME 30th and 70th percentile breakpoints for each month.
+        nyse_predictor = nyse.groupby(['jdate'])[predictor].describe(percentiles=[0.3, 0.7]).reset_index()
+        nyse_predictor = nyse_predictor[['jdate', '30%', '70%']]
+
+        # Merge the breakpoint dataframes together.
+        nyse_breaks = pd.merge(nyse_size, nyse_predictor, how='inner', on=['jdate'])
+
+        # Merge the breakpoints with the CCM June data.
+        ccm1_jun = pd.merge(ccm_jun, nyse_breaks, how='left', on=['jdate'])
+
+        # Assign each stock to its proper size bucket.
+        ccm1_jun['szport'] = np.where(
+            (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+            ccm1_jun.apply(sz_bucket, axis=1),
+            ''
+        )
+
+        # Assign each stock to its proper book to market bucket.
+        ccm1_jun['factor_portfolio'] = np.where(
+            (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+            ccm1_jun.apply(lambda row: factor_bucket(row, predictor), axis=1),
+            ''
+        )
+
+        # Create a 'valid_data' column that is 1 if company has valid June and December market equity data and has been in the dataframe at least once, and 0 otherwise.
+        ccm1_jun['valid_data'] = np.where(
+            (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+            1,
+            0
+        )
+
+        # Create a 'non_missing_portfolio' column that is 1 if the stock has been assigned to a portfolio, and 0 otherwise.
+        ccm1_jun['non_missing_portfolio'] = np.where(
+            (ccm1_jun['factor_portfolio'] != ''),
+            1,
+            0
+        )
+
+        # Create a new dataframe with only the essential columns for storing the portfolio assignments as of June.
+        june = ccm1_jun[['PERMNO', 'MthCalDt', 'jdate', 'szport', 'factor_portfolio', 'valid_data', 'non_missing_portfolio']].copy()
+
+        # Create a column representing the Fama-French year.
+        june['ffyear'] = june['jdate'].dt.year
+
+        # Keep only the essential columns.
+        crsp3 = crsp3[['MthCalDt', 'PERMNO', 'SHRCD', 'EXCHCD', 'retadj', 'me', 'wt', 'cumretx', 'ffyear', 'jdate']]
+
+        # Merge monthly CRSP data with the portfolio assignments in June.
+        ccm3 = pd.merge(crsp3,
+                        june[['PERMNO', 'ffyear', 'szport', 'factor_portfolio', 'valid_data', 'non_missing_portfolio']],
+                        how='left', on=['PERMNO', 'ffyear'])
+
+        # Keep only the common stocks with a positive weight, valid data, and a non-missing portfolio.
+        ccm4 = ccm3[(ccm3['wt'] > 0) &
+                    (ccm3['valid_data'] == 1) &
+                    (ccm3['non_missing_portfolio'] == 1) &
+                    ((ccm3['SHRCD'] == 10) | (ccm3['SHRCD'] == 11))]
+
+        # Create a dataframe for the value-weighted returs.
+        vwret = ccm4.groupby(['jdate', 'szport', 'factor_portfolio']).apply(wavg, 'retadj', 'wt').to_frame().reset_index().rename(columns={0: 'vwret'})
+
+        # Create a column that represents the combined size, be_me portfolio that the stock is in.
+        vwret['size_factor_portfolio'] = vwret['szport'] + vwret['factor_portfolio']
+
+        # Tranpose the dataframes such that the rows are dates and the columns are portfolio returns.
+        ff_factors = vwret.pivot(index='jdate', columns=['size_factor_portfolio'], values='vwret').reset_index()
+
+        # Get the average return of the big and small high be_me portfolios.
+        ff_factors['xH'] = (ff_factors['BH'] + ff_factors['SH']) / 2
+
+        # Get the average return of the big and small low be_me portfolios.
+        ff_factors['xL'] = (ff_factors['BL'] + ff_factors['SL']) / 2
+
+        # Create the HML factor which is the difference between the high and low be_me portfolios.
+        ff_factors[predictor] = ff_factors['xH'] - ff_factors['xL']
+
+        # Save only the necessary columns.
+        factor_dfs[predictor] = ff_factors[['jdate', predictor]]
+
+    # Merge all factor DataFrames together on 'jdate'
+    merged_factors = None
+    for predictor, df in factor_dfs.items():
+        if merged_factors is None:
+            merged_factors = df
+        else:
+            merged_factors = pd.merge(merged_factors, df, on='jdate', how='outer')
+
+    # Rename the jdate column to date
+    merged_factors = merged_factors.rename(columns={'jdate': 'date'})
+
+    # Save the merged DataFrame to a CSV file
+    merged_factors.to_csv('processed_fama_french_esque_factors.csv', index=False)
+
+
+def regress_on_ff6(factors: List):
+    fama_french_esque_factors = pd.read_csv('processed_fama_french_esque_factors.csv', parse_dates=['date'])
+    replicated_factors = pd.read_csv('processed_ff_replicated.csv', parse_dates=['date'])
+
+    merged_data = pd.merge(replicated_factors, fama_french_esque_factors, how='inner', on='date')
+
+    # Ensure there are no missing values in the columns of interest.
+    merged_data.dropna(inplace=True)
+
+    # Define the independent variables (Fama-French 6 factors).
+    X = merged_data[['xRm-Rf', 'xSMB', 'xHML', 'xRMW', 'xCMA', 'xUMD']]
+
+    # Add a constant to the independent variables matrix (for intercept)
+    X = sm.add_constant(X)
+
+    # Store the statistics on the factors.
+    results_list = []
+
+    # Iterate through the factors.
+    for factor in factors:
+
+        # Set the dependent variable to be y.
+        y = merged_data[factor]
+
+        # Fit the OLS model.
+        model = sm.OLS(y, X).fit()
+
+        # Print the model summary.
+        print(model.summary())
+
+        # Calculate the annual return.
+        annual_return = (1 + y.mean()) ** 12 - 1
+
+        # Calculate the annual standard deviation.
+        annual_std_dev = y.std() * (12 ** 0.5)
+
+        # Calculate Sharpe Ratio (risk-free rate assumed to be 0 as it is a self-financing long-short portfolio).
+        sharpe_ratio = annual_return / annual_std_dev
+
+        # Store results in a list
+        results_list.append({
+            'Factor': factor,
+            'Average Annual Return': annual_return,
+            'Average Annual Std Dev': annual_std_dev,
+            'Annual Sharpe Ratio': sharpe_ratio,
+        })
+
+    # Create DataFrame from results
+    results_df = pd.DataFrame(results_list)
+
+    # Print or save the DataFrame as needed
+    print(results_df)
+
+
 def produce_results():
     """
-    This script calls the function to generate the variables and conduct the Fama-MacBeth regressions.
+    This script calls the function to generate the variables, conduct the Fama-MacBeth regressions,
+    and create the Fama-French-esque factors.
     """
 
     start_time = time.time()
@@ -197,8 +383,20 @@ def produce_results():
     print("Generated Variables.")
     print("Time Elapsed: ", end_time - start_time)
 
+    # start_time = time.time()
+    # fama_macbeth_regression()
+    # end_time = time.time()
+    # print("Conducted Fama-MacBeth Regressions.")
+    # print("Time Elapsed: ", end_time - start_time)
+
     start_time = time.time()
-    fama_macbeth_regression()
+    create_fama_french_esque_factors(['NI_ME', 'OCF_ME', 'DIV_ME', 'COP_ME', 'FCF_EV', 'COP_EV', 'FCF+xrd_EV', 'COP-capx_EV'])
     end_time = time.time()
-    print("Conducted Fama-MacBeth Regressions.")
+    print("Create Fama-French-esque factors.")
+    print("Time Elapsed: ", end_time - start_time)
+
+    start_time = time.time()
+    regress_on_ff6(['NI_ME', 'OCF_ME', 'DIV_ME', 'COP_ME', 'FCF_EV', 'COP_EV', 'FCF+xrd_EV', 'COP-capx_EV'])
+    end_time = time.time()
+    print("Create Fama-French-esque factors..")
     print("Time Elapsed: ", end_time - start_time)
