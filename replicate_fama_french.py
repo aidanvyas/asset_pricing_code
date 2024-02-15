@@ -328,7 +328,7 @@ def compute_cma():
     nyse_size = nyse.groupby(['jdate'])['me'].median().to_frame().reset_index().rename(columns={'me': 'sizemedn'})
 
     # Get the INVESTMENT 30th and 70th percentile breakpoints for each month.
-    nyse_investment = nyse.groupby(['jdate'])['INVESTMENT'].describe(percentiles=[0.3, 0.7]).reset_index()
+    nyse_investment = nyse.groupby(['jdate'])['AT_GR1'].describe(percentiles=[0.3, 0.7]).reset_index()
     nyse_investment = nyse_investment[['jdate', '30%', '70%']]
 
     # Merge the breakpoint dataframes together.
@@ -349,7 +349,7 @@ def compute_cma():
     # Assign each stock to its proper book to market bucket.
     ccm1_jun['factor_portfolio'] = np.where(
         (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
-        ccm1_jun.apply(lambda row: factor_bucket(row, 'INVESTMENT'), axis=1),
+        ccm1_jun.apply(lambda row: factor_bucket(row, 'AT_GR1'), axis=1),
         ''
     )
 
@@ -397,10 +397,10 @@ def compute_cma():
     ff_factors = vwret.pivot(index='jdate', columns=['size_factor_portfolio'], values='vwret').reset_index()
 
     # Get the average return of the big and small conservative investment portfolios.
-    ff_factors['xC'] = (ff_factors['BH'] + ff_factors['SH']) / 2
+    ff_factors['xC'] = (ff_factors['BL'] + ff_factors['SL']) / 2
 
     # Get the average return of the big and small aggresive investment portfolios.
-    ff_factors['xA'] = (ff_factors['BL'] + ff_factors['SL']) / 2
+    ff_factors['xA'] = (ff_factors['BH'] + ff_factors['SH']) / 2
 
     # Create the CMA factor which is the difference between the conservative and aggresive investment portfolios.
     ff_factors['xCMA'] = ff_factors['xC'] - ff_factors['xA']

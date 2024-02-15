@@ -157,8 +157,8 @@ def process_compustat_data():
         comp['at']
     )
 
-    # INVESTMENT = percentage change in AT.
-    comp['INVESTMENT'] = comp.groupby('gvkey')['AT'].pct_change()
+    # AT_GR1 = percentage change in AT.
+    comp['AT_GR1'] = comp.groupby('gvkey')['AT'].pct_change()
 
     # XIDO = xido, if missing, use xi + do (if missing set to 0).
     comp['XIDO'] = np.where(
@@ -478,12 +478,12 @@ def process_data():
     print("Processed Compustat data.")
     print("Time Elapsed: ", end_time - start_time)
 
-    # # Process CRSP data.
-    # start_time = time.time()
-    # process_crsp_data()
-    # end_time = time.time()
-    # print("Processed CRSP data.")
-    # print("Time Elapsed: ", end_time - start_time)
+    # Process CRSP data.
+    start_time = time.time()
+    process_crsp_data()
+    end_time = time.time()
+    print("Processed CRSP data.")
+    print("Time Elapsed: ", end_time - start_time)
 
     # Process CCM data.
     start_time = time.time()
