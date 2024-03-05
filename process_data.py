@@ -3,6 +3,18 @@ import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import MonthEnd, YearEnd
 import time
+from functools import reduce
+
+
+def coalesce(*args):
+    """
+    Helper function that the first non-None value across given pandas Series for each row.
+    """
+    # Ensure all arguments are pandas Series.
+    args = [arg if isinstance(arg, pd.Series) else pd.Series(arg) for arg in args]
+
+    # Use reduce with a lambda that explicitly checks for notnull() and selects accordingly.
+    return reduce(lambda x, y: x.where(x.notnull(), y), args)
 
 
 def process_compustat_data():
@@ -31,39 +43,6 @@ def process_compustat_data():
     - ebitda: Earnings Before Interest
     - oibdp: Operating Income Before Depreciation
     - xint: Interest and Related Expense - Total
-    - dltt: Long-Term Debt - Total
-    - lct: Current Liabilities - Total
-    - lo: Liabilities - Other - Total
-    - xido: Extraordinary Items and Discontinued Operations
-    - xi: Extraordinary Items
-    - do: Discontinued Operations
-    - ebit: Earnings Before Interest and Taxes
-    - oiadp: Operating Income After Depreciation
-    - dp: Depreciation and Amortization
-    - pi: Pretax Income
-    - spi: Special Items
-    - nopi: Nonoperating Income (Expense)
-    - ib: Income Before Extraordinary Items
-    - ni: Net Income (Loss)
-    - txt: Income Taxes - Total
-    - mii: Noncontrolling Interest (Income Account)
-    - act: Current Assets - Total
-    - rect: Receivables - Total
-    - invt: Inventories - Total
-    - che: Cash and Short-Term Investments
-    - aco: Current Assets - Other - Total
-    - ap: Accounts Payable - Trade
-    - lco: Current Liabilities - Other - Total
-    - dlc: Debt in Current Liabilities - Total
-    - txp: Income Taxes Payable
-    - ivao: Investment and Advances - Other
-    - oancf: Operating Activities - Net Cash Flow
-    - wcap: Working Capital (Balance Sheet)
-    - capx: Capital Expenditures
-    - dvt: Dividends - Total
-    - dv: Cash Dividends (Cash Flow)
-    - xrd: Research and Development Expense
-    - xad: Advertising Expense
 
     When I have created variables, those are denoted by using all upper-case.
     The original Compustat variables are in all lower-case.
@@ -82,67 +61,28 @@ def process_compustat_data():
     comp['count'] = comp.groupby(['gvkey']).cumcount()
 
     # PSTK = pstkrv, if missing, use pstkl, if missing, use pstk.
-    comp['PSTK'] = np.where(
-        comp['pstkrv'].isnull(),
-        np.where(comp['pstkl'].isnull(), comp['pstk'], comp['pstkl']),
-        comp['pstkrv']
-    )
+    comp['PSTK'] = coalesce(comp['pstkrv'], comp['pstkl'], comp['pstk'])
 
-    # SEQ = seq, if missing, use ceq + PSTK (if missing set to 0), if missing use at - lt.
-    comp['SEQ'] = np.where(
-        comp['seq'].isnull(),
-        np.where(
-            (comp['ceq'] + np.where(comp['PSTK'].isnull(), 0, comp['PSTK'])).isnull(),
-            comp['at'] - comp['lt'],
-            comp['ceq'] + np.where(comp['PSTK'].isnull(), 0, comp['PSTK'])
-        ),
-        comp['seq']
-    )
+    # SEQ = seq, if missing, use ceq + PSTK (if missing set to 0), if missing, use at - lt.
+    comp['SEQ'] = coalesce(comp['seq'], comp['ceq'] + comp['PSTK'].fillna(0), comp['at'] - comp['lt'])
 
     # TXDITC = txditc, if missing, use txdb + itcb.
-    comp['TXDITC'] = np.where(
-        comp['txditc'].isnull(),
-        comp['txdb'] + comp['itcb'],
-        comp['txditc']
-    )
+    comp['TXDITC'] = coalesce(comp['txditc'], comp['txdb'] + comp['itcb'])
 
     # Book Equity = SEQ + TXDITC (if missing set to 0) - PSTK (if missing set to 0).
-    comp['BE'] = comp['SEQ'] + np.where(comp['TXDITC'].isnull(), 0, comp['TXDITC']) - np.where(comp['PSTK'].isnull(), 0, comp['PSTK'])
+    comp['BE'] = comp['SEQ'] + comp['TXDITC'].fillna(0) - comp['PSTK'].fillna(0)
 
     # SALE = sale, if missing, use revt.
-    comp['SALE'] = np.where(
-        comp['sale'].isnull(),
-        comp['revt'],
-        comp['sale']
-    )
+    comp['SALE'] = coalesce(comp['sale'], comp['revt'])
 
     # OPEX = xopr, if missing, use cogs + xsga.
-    comp['OPEX'] = np.where(
-        comp['xopr'],
-        comp['cogs'] + comp['xsga'],
-        comp['xopr']
-    )
+    comp['OPEX'] = coalesce(comp['xopr'], comp['cogs'] + comp['xsga'])
 
     # GP = gp, if missing, use SALE - cogs.
-    comp['GP'] = np.where(
-        comp['gp'].isnull(),
-        comp['SALE'] - comp['cogs'],
-        comp['gp']
-    )
+    comp['GP'] = coalesce(comp['gp'], comp['SALE'] - comp['cogs'])
 
     # EBITDA = ebitda, if missing, use oibdp, if missing, use SALE - OPEX, if missing, use GP - xsga.
-    comp['EBITDA'] = np.where(
-        comp['ebitda'].isnull(),
-        np.where(
-            comp['oibdp'].isnull(),
-            np.where(
-                (comp['SALE'] - comp['OPEX']).isnull(),
-                comp['GP'] - comp['xsga'],
-                comp['SALE'] - comp['OPEX']
-            ),
-            comp['oibdp']),
-        comp['ebitda']
-    )
+    comp['EBITDA'] = coalesce(comp['ebitda'], comp['oibdp'], comp['SALE'] - comp['OPEX'], comp['GP'] - comp['xsga'])
 
     # Operating Profits = EBITDA - xint.
     comp['OP'] = comp['EBITDA'] - comp['xint']
@@ -151,128 +91,10 @@ def process_compustat_data():
     comp['OP_BE'] = comp['OP'] / comp['BE']
 
     # AT = at, if missing, use SEQ + dltt + lct (if missing set to 0) + lo (if missing set to 0) + txditc (if missing set to 0).
-    comp['AT'] = np.where(
-        comp['at'].isnull(),
-        (comp['SEQ'] + comp['dltt'] + np.where(comp['lct'].isnull(), 0, comp['lct']) + np.where(comp['lo'].isnull(), 0, comp['lo']) + np.where(comp['txditc'].isnull(), 0, comp['txditc'])),
-        comp['at']
-    )
+    comp['AT'] = coalesce(comp['at'], comp['SEQ'] + comp['dltt'] + comp['lct'].fillna(0) + comp['lo'].fillna(0) + comp['txditc'].fillna(0))
 
     # AT_GR1 = percentage change in AT.
     comp['AT_GR1'] = comp.groupby('gvkey')['AT'].pct_change()
-
-    # XIDO = xido, if missing, use xi + do (if missing set to 0).
-    comp['XIDO'] = np.where(
-        comp['xido'].isnull(),
-        (comp['xi'] + comp['do']),
-        comp['xido']
-    )
-
-    # EBIT = ebit, if missing, use oiadp, if missing, use EBITDA - dp.
-    comp['EBIT'] = np.where(
-        comp['ebit'].isnull(),
-        np.where(
-            comp['oiadp'].isnull(),
-            (comp['EBITDA'] - comp['dp']),
-            comp['oiadp']
-        ),
-        comp['ebit']
-    )
-
-    # PI = pi, if missing, use EBIT - xint + spi (if missing set to 0) + nopi (if missing set to 0).
-    comp['PI'] = np.where(
-        comp['pi'].isnull(),
-        (comp['EBIT'] - comp['xint'] + np.where(comp['spi'].isnull(), 0, comp['spi']) + np.where(comp['nopi'].isnull(), 0, comp['nopi'])),
-        comp['pi']
-    )
-
-    # NI = ib, if missing, use ni - XIDO, if missing, use PI - txt - mii (if missing set to 0).
-    comp['NI'] = np.where(
-        comp['ib'].isnull(),
-        np.where(
-            (comp['ni'] - comp['XIDO']).isnull(),
-            (comp['PI'] - comp['txt'] - np.where(comp['mii'].isnull(), 0, comp['mii'])),
-            (comp['ni'] - comp['XIDO'])
-        ),
-        comp['ib']
-    )
-
-    # CA = act, is missing, use rect + invt + che + aco.
-    comp['CA'] = np.where(
-        comp['act'].isnull(),
-        (comp['rect'] + comp['invt'] + comp['che'] + comp['aco']),
-        comp['act']
-    )
-
-    # COA = CA - che.
-    comp['COA'] = comp['CA'] - comp['che']
-
-    # CL = lct, if missing, use ap + dlc + txp + lco.
-    comp['CL'] = np.where(
-        comp['lct'].isnull(),
-        (comp['ap'] + comp['dlc'] + comp['txp'] + comp['lco']),
-        comp['lct']
-    )
-
-    # COL = CL - dlc (if missing set to 0).
-    comp['COL'] = comp['CL'] - np.where(comp['dlc'].isnull(), 0, comp['dlc'])
-
-    # COWC = COA - COL.
-    comp['COWC'] = comp['COA'] - comp['COL']
-
-    # NCAO = AT - CA - ivao.
-    comp['NCOA'] = comp['AT'] - comp['CA'] - comp['ivao']
-
-    # NCOL = lt - CL - dltt.
-    comp['NCOL'] = comp['lt'] - comp['CL'] - comp['dltt']
-
-    # NNCOA = NCOA - NCOL.
-    comp['NNCOA'] = comp['NCOA'] - comp['NCOL']
-
-    # OACC = NI - oancf, if missing, use the annual change in COWC + the annual change in NNCOA.
-    comp['OACC'] = np.where(
-        (comp['NI'] - comp['oancf']).isnull(),
-        (comp.groupby('gvkey')['COWC'].diff() + comp.groupby('gvkey')['NNCOA'].diff()),
-        (comp['NI'] - comp['oancf'])
-    )
-
-    # OCF = oancf, if missing, use NI - OACC, if missing, use NI + dp - wcap (if missing set to 0).
-    comp['OCF'] = np.where(
-        comp['oancf'].isnull(),
-        np.where(
-            (comp['NI'] - comp['OACC']).isnull(),
-            (comp['NI'] + comp['dp'] - np.where(comp['wcap'].isnull(), 0, comp['wcap'])),
-            (comp['NI'] - comp['OACC'])
-        ),
-        comp['oancf']
-    )
-
-    # Free Cash Flow = OCF - capx.
-    comp['FCF'] = comp['OCF'] - comp['capx']
-
-    # DEBT = dltt (if missing set to 0) + dlc (if missing set to 0).
-    comp['DEBT'] = np.where(comp['dltt'].isnull(), 0, comp['dltt']) + np.where(comp['dlc'].isnull(), 0, comp['dlc'])
-
-    # Net Debt = DEBT - che (if missing set to 0).
-    comp['NETDEBT'] = comp['DEBT'] - np.where(comp['che'].isnull(), 0, comp['che'])
-
-    # Total Dividends = dvt, if missing, use dv.
-    comp['DIVIDENDS'] = np.where(
-        comp['dvt'].isnull(),
-        comp['dv'],
-        comp['dvt']
-    )
-
-    # Cash-based Operating Profits = EBITDA + xrd (if missing set to 0) - OACC.
-    comp['COP'] = comp['EBITDA'] + np.where(comp['xrd'].isnull(), 0, comp['xrd']) - comp['OACC']
-
-    # Net Current Asset Value = CA - lt.
-    comp['NCAV'] = comp['CA'] - comp['lt']
-
-    # Free Cash Flow + Research and Development = FCF + xrd.
-    comp['FCF+XRD'] = comp['FCF'] + np.where(comp['xrd'].isnull(), 0, comp['xrd'])
-
-    # Cash-based Operating Profits - capx = COP - capx.
-    comp['COP-CAPX'] = comp['COP'] - comp['capx']
 
     # Save the dataframe to a csv.
     comp.to_csv('processed_comp_funda.csv', index=False)
