@@ -108,7 +108,7 @@ def process_crsp_data():
     # Read in the csv files.
     msf = pd.read_csv('raw_crsp_msf.csv', parse_dates=['MthCalDt'])
     msenames = pd.read_csv('raw_crsp_msenames.csv', parse_dates=['DATE', 'NAMEENDT'])
-    dlret = pd.read_csv('raw_crsp_msedelist.csv', parse_dates=['DelistingDt'])
+    dlret = pd.read_csv('raw_crsp_msedelist.csv', parse_dates=['DLSTDT'])
 
     # Merge the monthly stock files and names dataframes together.
     crsp_m = pd.merge(msf, msenames, left_on='PERMNO', right_on='PERMNO', how='left')
@@ -128,13 +128,21 @@ def process_crsp_data():
 
     # Line up the dates to be at the end of the month.
     crsp_m['jdate'] = crsp_m['MthCalDt'] + MonthEnd(0)
-    dlret['jdate'] = dlret['DelistingDt'] + MonthEnd(0)
+    dlret['jdate'] = dlret['DLSTDT'] + MonthEnd(0)
 
     # Merge all of the CRSP dataframes together.
     crsp = pd.merge(crsp_m, dlret, how='left', on=['PERMNO', 'jdate'])
 
-    # Set the NaN returns to 0.
-    crsp['DelRet'] = crsp['DelRet'].fillna(0)
+    # A boolean series representing whether the delising is performance related.
+    DLCode = (crsp['DLSTCD']==500) | ((crsp['DLSTCD'] >=520) & (crsp['DLSTCD']<=584))
+
+    # If the delisting is for performance related and the delisting return is NaN, set the delisting return to be -30% for NYSE and AMEX stocks and -55% for NASDAQ stocks.
+    crsp['DLRET'] = np.where(DLCode & crsp['DLRET'].isnull() & crsp['DLRET'].isin([1,2]), -0.3, crsp['DLRET'])
+    crsp['DLRET'] = np.where(DLCode & crsp['DLRET'].isnull() & (crsp['DLRET']==3), -0.55, crsp['DLRET'])
+
+    # Set the NaN returns to 0 and coerce the delisting returns to numeric types.
+    crsp['DelRet'] = crsp['DLRET'].fillna(0)
+    crsp['DelRet'] = pd.to_numeric(crsp['DelRet'], errors='coerce')
     crsp['MthRet'] = crsp['MthRet'].fillna(0)
 
     # Calculate the delisting adjusted-returns.
@@ -144,7 +152,7 @@ def process_crsp_data():
     crsp['me'] = crsp['MthPrc'].abs() * crsp['ShrOut']
 
     # Remove unnecessary columns.
-    crsp = crsp.drop(['DelRet', 'DelistingDt', 'MthPrc', 'ShrOut'], axis=1)
+    crsp = crsp.drop(['DelRet', 'DLRET', 'DLSTDT', 'MthPrc', 'ShrOut'], axis=1)
 
     # Sort the values by company code (jdate, PERMCO) and then market equity.
     crsp = crsp.sort_values(by=['jdate', 'PERMCO', 'me'])

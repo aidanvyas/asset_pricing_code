@@ -15,11 +15,10 @@ Select:
         - Company Status -> A, I
     - Choose variable types
         - Data Items
-        - gvkey, seq, ceq, at, lt, pstkrv, pstkl, pstk, txditc, txdb, itcb, xint, ebitda, oibdp, xsga,
-        sale, revt, xopr, cogs, gp, capx, oancf, dp, wcap, ib, ni, txt, mii, xido, xi,
-        do, pi, spi, nopi, ebit, oiadp, che, act, rect, invt, aco, dlc, lct, ap, txp, lco,
-        ivao, dltt, lo, xrd, dv, dvt, xpp, drc, drlt, xacc
-        - Note this is only for size, be_me, op_be, asset growth, cop_at, fcf_ev
+            - gvkey, seq, ceq, at, lt, txditc, txdb, itcb, pstkrv, pstkl, pstk, ebitda, oibdp, sale, revt, xopr, cogs, xsga, gp, xint,
+              dltt, lct, lo, ib, ni, xido, xi, do, pi, ebit, oiadp, dp, spi, nopi, txt, mii, capx, oancf, act, rect, invt, che, aco, ap, dlc, txp, lco, ivao, wcap, 
+              xrd, dvt, dv, sstk, prstkc, re, acominc
+            - Note this is only for be_me, op_be, investment, net income, operating cash flow, dividends, cash-based opearating profit, free cash flow, net payouts, retained earnings, Buffett's owners earnings, and our revised owners earnings
     - Select query output
         - csv, Uncompressed, YYYY-MM-DD
 Save as: 'raw_comp_funda.csv'
@@ -27,11 +26,11 @@ Save as: 'raw_comp_funda.csv'
 Link to data: https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/monthly-stock-file/
 Select:
     - Choose your date range
-        - 1959-01-01, 2022-12-30
+        - 1925-12-31, 2022-12-30
     - Apply your company codes
         - Search the entire database
     - Choose your query variables
-        - PERMNO, PERMCO, MthCalDate, MthRet, MthRetx, ShrOut, MthPrc
+        - PERMNO, PERMCO, MthCalDt, MthRet, MthRetx, ShrOut, MthPrc
     - Select query output
         - csv, Uncompressed, YYYY-MM-DD
 Save as: 'raw_crsp_msf.csv'
@@ -49,7 +48,7 @@ Save as: 'raw_crsp_msenames.csv'
 Link to data: https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/delisting-information/
 Select:
     - Choose your date range
-        - 1959-01-01, 2022-12-29
+        - 1926-02-24, 2022-12-31
     - Apply your company codes
         - Search the entire database
     - Choose delisting corporate action type
@@ -59,6 +58,7 @@ Select:
     - Select query output
         - csv, Uncompressed, YYYY-MM-DD
 Save as: 'raw_crsp_msedelist.csv'
+- Note: There are some errors redownloading this data.  It is unclear what is causing them as this worked before.
 
 Link to data: https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/crspcompustat-merged/compustat-crsp-link/
 Select:
