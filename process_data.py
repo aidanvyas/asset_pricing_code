@@ -43,6 +43,9 @@ def process_compustat_data():
     - ebitda: Earnings Before Interest
     - oibdp: Operating Income Before Depreciation
     - xint: Interest and Related Expense - Total
+    - dltt: Long-Term Debt - Total
+    - lct: Current Liabilities - Total
+    - lo: Liabilities - Other, Total
 
     When I have created variables, those are denoted by using all upper-case.
     The original Compustat variables are in all lower-case.

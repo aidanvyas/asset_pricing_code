@@ -45,16 +45,16 @@ Select:
         - csv, Uncompressed, YYYY-MM-DD
 Save as: 'raw_crsp_msenames.csv'
 
-Link to data: https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/delisting-information/
+Link to data: https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-events/delist/
 Select:
     - Choose your date range
-        - 1926-02-24, 2022-12-31
+        - 1926-02, 2022-12
     - Apply your company codes
         - Search the entire database
-    - Choose delisting corporate action type
-        - Dropped, Exchange, Liquidation, Lost Source, Merger
+    - Choose delisting codes for Delisting events
+        - Active (100-199), Mergers (200-299), Exchanges (300-399), Liquidations (400-499), Dropped (500-599), Expirations (600-699), Domestics that became Foreign (900-999)
     - Choose query variables
-        - permno, delret, delistingdt
+        - permno, dlret, dlstdt, dlstcd
     - Select query output
         - csv, Uncompressed, YYYY-MM-DD
 Save as: 'raw_crsp_msedelist.csv'

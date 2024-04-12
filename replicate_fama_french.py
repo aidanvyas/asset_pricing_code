@@ -512,7 +512,7 @@ def compare_with_fama_french():
     """
 
     # Read in the csv files.
-    ff = pd.read_csv('raw_fama_french_factors.csv')
+    ff = pd.read_csv('raw_factors.csv')
     rm = pd.read_csv('processed_rm_factor.csv', parse_dates=['date'])
     hml = pd.read_csv('processed_hml_factor.csv', parse_dates=['date'])
     rmw = pd.read_csv('processed_rmw_factor.csv', parse_dates=['date'])
