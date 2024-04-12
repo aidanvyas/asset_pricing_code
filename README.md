@@ -27,6 +27,10 @@ To replicate my work:
 2. Follow the instructions in the `data_download_instructions.txt` file to download all of the data.
 3. Run the code!
 
+## Next Steps
+
+In the spirit of full transparency, I am more than happy to point out any unresolved bugs or possible issues in my code.  The biggest worry right now is that I am unable to recreate the descriptive statistics for many metrics (i.e. mean, standard deviation, percentiles), and this appears to have a slight effect on the Fama-MacBeth regressions.  The reason for this error is unknown as of now, and if you are able to figure it out, please let me know.  It is important to note that these errors do not seem to impact the factor portfolios, as I am able to virtually perfectly recreate the Fama-French factors.
+
 ## Contact
 
 Please let me know if you have any questions, comments, or concerns. You can reach me at [aidanvyas@rice.edu](mailto:aidanvyas@rice.edu).
