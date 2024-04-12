@@ -14,7 +14,7 @@ In publishing this code, I take inspiration from [Open Asset Pricing](https://ww
 
 ## Acknowledgements
 
-This code is built off of the work of Qingyi (Freda) Song Drechsler, whose code on WRDS served as the base of this implementation, and Theis Ingerslev Jensen, Bryan Kelly, and Lasse Heje Pedersen. Their "Is There A Replication Crisis in Finance?" appendix contained many useful definitions which are employed here.
+This code is built off of the work of Qingyi (Freda) Song Drechsler, whose code on WRDS served as the base of this implementation, and Theis Ingerslev Jensen, Bryan Kelly, and Lasse Heje Pedersen. Their "Is There A Replication Crisis in Finance?" appendix contained many useful definitions which are employed here.  And a special thanks goes to my research mentor Dr. Kerry Back who has patiently helped me along this journey.
 
 ## Implementation Details
 
