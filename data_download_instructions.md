@@ -4,7 +4,7 @@
 
 ### Select:
 - **Choose your date range:**
-  - `datedate`, `1950-06`, `2022-12`
+  - `datedate`, `1962-01`, `2022-12`
 - **Apply your company codes:**
   - Search the entire database
 - **Screening Variables (Select at least one per line):**
@@ -15,13 +15,12 @@
   - Currency -> `USD`
   - Company Status -> `A`, `I`
 - **Choose variable types:**
-  - **Data Items:**
-    - `gvkey`, `seq`, `ceq`, `at`, `lt`, `txditc`, `txdb`, `itcb`, `pstkrv`, `pstkl`, `pstk`, `ebitda`, `oibdp`, `sale`, `revt`, `xopr`, `cogs`, `xsga`, `gp`, `xint`, `dltt`, `lct`, `lo`, `ib`, `ni`, `xido`, `xi`, `do`, `pi`, `ebit`, `oiadp`, `dp`, `spi`, `nopi`, `txt`, `mii`, `capx`, `oancf`, `act`, `rect`, `invt`, `che`, `aco`, `ap`, `dlc`, `txp`, `lco`, `ivao`, `wcap`, `xrd`, `dvt`, `dv`, `sstk`, `prstkc`, `re`, `acominc`
-    - Note: This is only for be_me, op_be, investment, net income, operating cash flow, dividends, cash-based operating profit, free cash flow, net payouts, retained earnings, Buffett's owners earnings, and our revised owners earnings
+  - Select Variables Type -> `Data Items`
+  - Select -> `All`
 - **Select query output:**
-  - `csv`, Uncompressed, `YYYY-MM-DD`
+  - `csv`, `Uncompressed`, `YYYY-MM-DD`
 
-### Save as: `raw_comp_funda.csv`
+### Save as: `data/raw_comp_funda.csv`
 
 ---
 
