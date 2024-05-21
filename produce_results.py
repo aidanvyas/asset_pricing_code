@@ -5,7 +5,7 @@ from typing import List, Dict
 import numpy as np
 import statsmodels.api as sm
 import time
-from replicate_fama_french import sz_bucket, factor_bucket, wavg
+from asset_pricing_code.replications.replicate_fama_french import sz_bucket, factor_bucket, wavg
 from scipy.stats import skew, kurtosis, zscore
 from scipy.stats.mstats import winsorize
 import matplotlib.pyplot as plt

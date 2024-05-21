@@ -9,7 +9,7 @@ useful definitions which are employed here.
 # Import the necessary libraries.
 import time
 from process_data import process_data
-from replicate_fama_french import replicate_fama_french
+from asset_pricing_code.replications.replicate_fama_french import replicate_fama_french
 from produce_results import produce_results
 
 
