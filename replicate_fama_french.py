@@ -678,7 +678,7 @@ def compare_with_fama_french():
     print("Saved the replicated Fama-French factors to a new dataframe.")
 
     # Save the dataframe as a csv.
-    ff_replicated.to_csv('processed_ff_replicated.csv', index=False)
+    ff_replicated.to_csv('data/processed_ff_replicated.csv', index=False)
     print("Saved the dataframe as a csv.")
 
     # Define the list of files to delete.
