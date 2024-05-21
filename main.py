@@ -36,12 +36,12 @@ def main():
     print("Replicated Fama-French.")
     print("Time Elapsed: ", end_time - start_time)
 
-    # Produce the results (Fama-MacBeth regression, Fama-French-esque factors, decile sorts, and etc.).
-    start_time = time.time()
-    produce_results()
-    end_time = time.time()
-    print("Produced Results.")
-    print("Time Elapsed: ", end_time - start_time)
+    # # Produce the results (Fama-MacBeth regression, Fama-French-esque factors, decile sorts, and etc.).
+    # start_time = time.time()
+    # produce_results()
+    # end_time = time.time()
+    # print("Produced Results.")
+    # print("Time Elapsed: ", end_time - start_time)
 
     # Print total execution time.
     actual_end_time = time.time()
