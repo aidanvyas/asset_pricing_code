@@ -1,6 +1,6 @@
-# Data Extraction Instructions
+# Data Download Instructions
 
-## Link to data: [WRDS Compustat Fundamentals Annual](https://wrds-www.wharton.upenn.edu/pages/get-data/compustat-capital-iq-standard-poors/compustat/north-america-daily/fundamentals-annual)
+## Download this dataset: [WRDS Compustat Fundamentals Annual](https://wrds-www.wharton.upenn.edu/pages/get-data/compustat-capital-iq-standard-poors/compustat/north-america-daily/fundamentals-annual)
 
 ### Select:
 - **Choose your date range:**
@@ -19,13 +19,14 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press Submit Form**
+- **Download the Output File**
 
 ### Save as: `data/raw_compustat_fundamentals_annual.csv`
-1.3 GBs
 
 ---
 
-## Link to data: [WRDS CRSP Monthly Stock File](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/monthly-stock-file)
+## Download this dataset: [WRDS CRSP Monthly Stock File](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/monthly-stock-file)
 
 ### Select:
 - **Choose your date range:**
@@ -36,9 +37,10 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press Submit Form**
+- **Download the Output File**
 
 ### Save as: `data/raw_crsp_monthly_stock_files.csv`
-2.1 GBs
 
 ---
 
@@ -51,9 +53,10 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press Submit Form**
+- **Download the Output File**
 
 ### Save as: `data/raw_crsp_historical_descriptive_information.csv`
-12 MBs
 
 ---
 
@@ -70,10 +73,10 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press Submit Form**
+- **Download the Output File**
 
 ### Save as: `data/raw_crsp_delisting_information.csv`
-2.8 MBs
-- Note: There are some errors redownloading this data. It is unclear what is causing them as this worked before.
 
 ---
 
@@ -88,6 +91,7 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press Submit Form**
+- **Download the Output File**
 
 ### Save as: `data/raw_crsp_compustat_linking_table.csv`
-14.2 MBs
