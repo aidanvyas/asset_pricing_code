@@ -22,7 +22,7 @@
 - **Press `Submit Form`**
 - **Download the Output File**
 
-### Drag and drop the file into the data folder as `raw_compustat_fundamentals_annual.csv`
+### Drag and drop the file into the `data` folder and save it as `raw_compustat_fundamentals_annual.csv`
 
 ---
 
@@ -40,7 +40,7 @@
 - **Press `Submit Form`**
 - **Download the Output File**
 
-### Drag and drop the file into the data folder as `raw_crsp_monthly_stock_files.csv`
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_monthly_stock_files.csv`
 
 ---
 
@@ -56,7 +56,7 @@
 - **Press `Submit Form`**
 - **Download the Output File**
 
-### Drag and drop the file into the data folder as `raw_crsp_historical_descriptive_information.csv`
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_historical_descriptive_information.csv`
 
 ---
 
@@ -76,7 +76,7 @@
 - **Press `Submit Form`**
 - **Download the Output File**
 
-### Drag and drop the file into the data folder as `raw_crsp_delisting_information.csv`
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_delisting_information.csv`
 
 ---
 
@@ -94,4 +94,4 @@
 - **Press `Submit Form`**
 - **Download the Output File**
 
-### Drag and drop the file into the data folder as `raw_crsp_compustat_linking_table.csv`
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_compustat_linking_table.csv`
