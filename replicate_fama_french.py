@@ -4,7 +4,7 @@ import numpy as np
 import time
 from pandas.tseries.offsets import MonthEnd
 from scipy import stats
-import os
+from pathlib import Path
 
 
 def sz_bucket(row):
@@ -651,14 +651,27 @@ def compare_with_fama_french():
     ffcomp63['xSMB'] = (ffcomp63['xSHML'] + ffcomp63['xSRMW'] + ffcomp63['xSCMA']) / 3
     print("Created the SMB factor.")
 
-    # Print out the correlation between the two datasets.
-    print(stats.pearsonr(ffcomp63['Mkt-RF'], ffcomp63['xRm-Rf']))
-    print(stats.pearsonr(ffcomp63['SMB'], ffcomp63['xSMB']))
-    print(stats.pearsonr(ffcomp63['HML'], ffcomp63['xHML']))
-    print(stats.pearsonr(ffcomp63['RMW'], ffcomp63['xRMW']))
-    print(stats.pearsonr(ffcomp63['CMA'], ffcomp63['xCMA']))
-    print(stats.pearsonr(ffcomp63['UMD'], ffcomp63['xUMD']))
-    print("Printed out the correlations.")
+    # Define the pairs of columns to compare.
+    pairs = [
+        ('Mkt-RF', 'xRm-Rf'),
+        ('SMB', 'xSMB'),
+        ('HML', 'xHML'),
+        ('RMW', 'xRMW'),
+        ('CMA', 'xCMA'),
+        ('UMD', 'xUMD')
+    ]
+    print("Defined the pairs of columns to compare.")
+
+    # Iterate through the factor pairs.
+    for col1, col2 in pairs:
+
+        # Compute the Pearson and Spearman correlation
+        pearson_corr, pearson_pvalue = stats.pearsonr(ffcomp63[col1], ffcomp63[col2])
+        spearman_corr, spearman_pvalue = stats.spearmanr(ffcomp63[col1], ffcomp63[col2])
+
+        # Print out the correlations.
+        print(f"Pearson: {col1} vs {col2}: correlation={pearson_corr:.3f}, p-value={pearson_pvalue:.3g} | "
+            f"Spearman: correlation={spearman_corr:.3f}, p-value={spearman_pvalue:.3g}")
 
     # Save the replicated Fama-French factors to a new dataframe.
     ff_replicated = ffcomp63[['date', 'xRm-Rf', 'xSMB', 'xHML', 'xRMW', 'xCMA', 'xUMD']]
@@ -668,12 +681,22 @@ def compare_with_fama_french():
     ff_replicated.to_csv('processed_ff_replicated.csv', index=False)
     print("Saved the dataframe as a csv.")
 
-    # Delete the intermediate csv files.
-    files_to_delete = ['processed_rm_factor.csv', 'processed_hml_factor.csv', 'processed_rmw_factor.csv', 'processed_cma_factor.csv', 'processed_umd_factor.csv']
+    # Define the list of files to delete.
+    files_to_delete = [
+        'data/processed_rm_factor.csv', 
+        'data/processed_hml_factor.csv', 
+        'data/processed_rmw_factor.csv', 
+        'data/processed_cma_factor.csv', 
+        'data/processed_umd_factor.csv'
+    ]
+    print("Defined the list of files to delete.")
+
+    # Delete the files if they exist.
     for file in files_to_delete:
-        if os.path.exists(file):
-            os.remove(file)
-    print("Deleted the intermediate csv files.")
+        file_path = Path(file)
+        if file_path.exists():
+            file_path.unlink()
+    print("Deleted the files.")
 
 
 def replicate_fama_french():
