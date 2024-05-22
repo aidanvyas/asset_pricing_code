@@ -68,7 +68,7 @@
 - **Apply your company codes:**
   - Search the entire database
 - **Choose delisting codes for Delisting events:**
-  - `Active (`100-199)`, `Mergers (200-299)`, `Exchanges (300-399)`, `Liquidations (400-499)`, `Dropped (500-599)`, `Expirations (600-699)`, `Domestics that became Foreign (900-999)`
+  - `Active (100-199)`, `Mergers (200-299)`, `Exchanges (300-399)`, `Liquidations (400-499)`, `Dropped (500-599)`, `Expirations (600-699)`, `Domestics that became Foreign (900-999)`
 - **Choose query variables:**
   - Select -> `All`
 - **Select query output:**
