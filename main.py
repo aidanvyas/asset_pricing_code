@@ -21,12 +21,12 @@ def main():
     # Track the overall execution time.
     start_time = time.time()
 
-    # Process the data.
-    process_data()
-    print("Processed Data.")
+    # # Process the data.
+    # process_data(logging_enabled=True)
+    # print("Processed Data.")
 
     # Replicate the Fama-French factors.
-    replicate_fama_french()
+    replicate_fama_french(logging_enabled=True)
     print("Replicated Fama-French Factors.")
 
     # Print total execution time.

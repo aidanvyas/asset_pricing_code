@@ -1,11 +1,24 @@
+"""
+This script contains functions to process Compustat, CRSP, and CCM data.
+"""
+
 # Import the necessary libraries
+import logging
+from functools import reduce
+import time
 import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import MonthEnd, YearEnd
-import time
-from functools import reduce
-import dask.dataframe as dd
-from concurrent.futures import ProcessPoolExecutor
+
+
+def setup_logging(logging_enabled):
+    """
+    Helper function to setup logging.
+    """
+    if logging_enabled:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.disable(logging.CRITICAL)
 
 
 def coalesce(*args):
@@ -19,7 +32,7 @@ def coalesce(*args):
     return reduce(lambda x, y: x.where(x.notnull(), y), args)
 
 
-def process_compustat_data():
+def process_compustat_data(logging_enabled: bool = True):
     """
     Helper function to process Compustat data and construct intermediate variables (e.g. book equity, operating profits, etc.).
 
@@ -53,345 +66,353 @@ def process_compustat_data():
     The original Compustat variables are in all lower-case.
     """
 
+    # Set up logging.
+    setup_logging(logging_enabled)
+
     # Read in the csv file.
-    comp = pd.read_csv('data/processed_comp_funda.csv', parse_dates=['datadate'], usecols=['gvkey', 'datadate', 'pstkrv', 'pstkl', 'pstk', 'seq', 'ceq', 'at', 'lt', 'txditc', 'txdb', 'itcb', 'sale', 'revt', 'xopr', 'cogs', 'xsga', 'gp', 'ebitda', 'oibdp', 'xint', 'dltt', 'lct', 'lo'])
-    print("Read in the csv file.")
+    comp = pd.read_csv('data/raw_compustat_fundamentals_annual.csv', parse_dates=['datadate'], usecols=['gvkey', 'datadate', 'pstkrv', 'pstkl', 'pstk', 'seq', 'ceq', 'at', 'lt', 'txditc', 'txdb', 'itcb', 'sale', 'revt', 'xopr', 'cogs', 'xsga', 'gp', 'ebitda', 'oibdp', 'xint', 'dltt', 'lct', 'lo'])
+    logging.info("Read in the csv file.")
 
     # Create a year column.
     comp['year'] = comp['datadate'].dt.year
-    print("Created a year column.")
+    logging.info("Created a year column.")
 
     # Sort the dataframe by gvkey (company code) and then date.
     comp = comp.sort_values(by=['gvkey', 'datadate'])
-    print("Sorted the dataframe by gvkey (company code) and then date.")
+    logging.info("Sorted the dataframe by gvkey (company code) and then date.")
 
     # Create a 'count' column which equals the number of time that company has appeared in the dataframe.
     comp['count'] = comp.groupby(['gvkey']).cumcount()
-    print("Created a 'count' column which equals the number of time that company has appeared in the dataframe.")
+    logging.info("Created a 'count' column which equals the number of time that company has appeared in the dataframe.")
 
     # PSTK = pstkrv, if missing, use pstkl, if missing, use pstk.
     comp['PSTK'] = coalesce(comp['pstkrv'], comp['pstkl'], comp['pstk'])
-    print("Created a 'PSTK' column.")
+    logging.info("Created a 'PSTK' column.")
 
     # SEQ = seq, if missing, use ceq + PSTK (if missing set to 0), if missing, use at - lt.
     comp['SEQ'] = coalesce(comp['seq'], comp['ceq'] + comp['PSTK'].fillna(0), comp['at'] - comp['lt'])
-    print("Created a 'SEQ' column.")
+    logging.info("Created a 'SEQ' column.")
 
     # TXDITC = txditc, if missing, use txdb + itcb.
     comp['TXDITC'] = coalesce(comp['txditc'], comp['txdb'] + comp['itcb'])
-    print("Created a 'TXDITC' column.")
+    logging.info("Created a 'TXDITC' column.")
 
     # Book Equity = SEQ + TXDITC (if missing set to 0) - PSTK (if missing set to 0).
     comp['BE'] = comp['SEQ'] + comp['TXDITC'].fillna(0) - comp['PSTK'].fillna(0)
-    print("Created a 'BE' column.")
+    logging.info("Created a 'BE' column.")
 
     # SALE = sale, if missing, use revt.
     comp['SALE'] = coalesce(comp['sale'], comp['revt'])
-    print("Created a 'SALE' column.")
+    logging.info("Created a 'SALE' column.")
 
     # OPEX = xopr, if missing, use cogs + xsga.
     comp['OPEX'] = coalesce(comp['xopr'], comp['cogs'] + comp['xsga'])
-    print("Created a 'OPEX' column.")
+    logging.info("Created a 'OPEX' column.")
 
     # GP = gp, if missing, use SALE - cogs.
     comp['GP'] = coalesce(comp['gp'], comp['SALE'] - comp['cogs'])
-    print("Created a 'GP' column.")
+    logging.info("Created a 'GP' column.")
 
     # EBITDA = ebitda, if missing, use oibdp, if missing, use SALE - OPEX, if missing, use GP - xsga.
     comp['EBITDA'] = coalesce(comp['ebitda'], comp['oibdp'], comp['SALE'] - comp['OPEX'], comp['GP'] - comp['xsga'])
-    print("Created a 'EBITDA' column.")
+    logging.info("Created a 'EBITDA' column.")
 
     # Operating Profits = EBITDA - xint.
     comp['OP'] = comp['EBITDA'] - comp['xint']
-    print("Created a 'OP' column.")
+    logging.info("Created a 'OP' column.")
 
     # Operating Profitability = Operating Profits / Book Equity.
     comp['OP_BE'] = comp['OP'] / comp['BE']
-    print("Created a 'OP_BE' column.")
+    logging.info("Created a 'OP_BE' column.")
 
     # AT = at, if missing, use SEQ + dltt + lct (if missing set to 0) + lo (if missing set to 0) + txditc (if missing set to 0).
     comp['AT'] = coalesce(comp['at'], comp['SEQ'] + comp['dltt'] + comp['lct'].fillna(0) + comp['lo'].fillna(0) + comp['txditc'].fillna(0))
-    print("Created a 'AT' column.")
+    logging.info("Created a 'AT' column.")
 
     # AT_GR1 = percentage change in AT.
     comp['AT_GR1'] = comp.groupby('gvkey')['AT'].pct_change()
-    print("Created a 'AT_GR1' column.")
+    logging.info("Created a 'AT_GR1' column.")
 
     # Save the dataframe to a csv.
     comp.to_csv('data/processed_comp_funda.csv', index=False)
-    print("Saved the dataframe to a csv.")
+    logging.info("Saved the dataframe to a csv.")
 
 
-def process_crsp_data():
+def process_crsp_data(logging_enabled: bool = True):
     """
     Helper function to process CRSP data.
     """
+    # Set up logging.
+    setup_logging(logging_enabled)
 
     # Read in the csv files.
     msf = pd.read_csv('data/raw_monthly_stock_files.csv', usecols=['PERMNO', 'PERMCO', 'MthCalDt', 'MthRet', 'MthRetx', 'ShrOut', 'MthPrc'], parse_dates=['MthCalDt'])
     msenames = pd.read_csv('data/raw_compustat_historical_descriptive_information.csv', usecols=['PERMNO', 'DATE', 'NAMEENDT', 'SHRCD', 'EXCHCD'], parse_dates=['DATE', 'NAMEENDT'])
     dlret = pd.read_csv('data/raw_crsp_delisting_information.csv', usecols=['PERMNO', 'DLSTDT', 'DLRET', 'DLSTCD'], parse_dates=['DLSTDT'])
-    print("Read in the csv files.")
+    logging.info("Read in the csv files.")
 
     # Merge the monthly stock files and names dataframes together.
     crsp_m = pd.merge(msf, msenames, left_on='PERMNO', right_on='PERMNO', how='left')
-    print("Merged the monthly stock files and names dataframes.")
+    logging.info("Merged the monthly stock files and names dataframes.")
 
     # Filter the data such that the dates are in the correct range.
     crsp_m = crsp_m[(crsp_m['NAMEENDT'] >= crsp_m['MthCalDt']) &
                     (crsp_m['MthCalDt'] >= crsp_m['DATE']) &
                     (crsp_m['MthCalDt'] >= pd.to_datetime('1958-07-01')) &
                     (crsp_m['MthCalDt'] <= pd.to_datetime('2022-12-30'))]
-    print("Filtered the data.")
+    logging.info("Filtered the data.")
 
     # Filter the data such that we only get NYSE, NASDAQ, and AMEX stocks.
     crsp_m = crsp_m[(crsp_m['EXCHCD'].between(1, 3))]
-    print("Filtered the data to only include NYSE, NASDAQ, and AMEX stocks.")
+    logging.info("Filtered the data to only include NYSE, NASDAQ, and AMEX stocks.")
 
     # Change the variable format to int.
     crsp_m[['PERMCO', 'PERMNO', 'SHRCD', 'EXCHCD']] = crsp_m[['PERMCO', 'PERMNO', 'SHRCD', 'EXCHCD']].astype(int)
     dlret['PERMNO'] = dlret['PERMNO'].astype(int)
-    print("Changed the variable format to int.")
+    logging.info("Changed the variable format to int.")
 
     # Line up the dates to be at the end of the month.
     crsp_m['jdate'] = crsp_m['MthCalDt'] + MonthEnd(0)
     dlret['jdate'] = dlret['DLSTDT'] + MonthEnd(0)
-    print("Lined up the dates to be at the end of the month.")
+    logging.info("Lined up the dates to be at the end of the month.")
 
     # Merge all of the CRSP dataframes together.
     crsp = pd.merge(crsp_m, dlret, how='left', on=['PERMNO', 'jdate'])
-    print("Merged all of the CRSP dataframes together.")
+    logging.info("Merged all of the CRSP dataframes together.")
 
     # Create a boolean series representing whether the delising is performance related.
     DLCode = (crsp['DLSTCD'] == 500) | ((crsp['DLSTCD'] >= 520) & (crsp['DLSTCD'] <= 584))
-    print("Created a boolean series representing whether the delisting is performance related.")
+    logging.info("Created a boolean series representing whether the delisting is performance related.")
 
     # If the delisting is for performance related and the delisting return is NaN, set the delisting return to be -30% for NYSE and AMEX stocks and -55% for NASDAQ stocks.
     crsp['DLRET'] = np.where(DLCode & crsp['DLRET'].isnull() & crsp['DLRET'].isin([1,2]), -0.3, crsp['DLRET'])
     crsp['DLRET'] = np.where(DLCode & crsp['DLRET'].isnull() & (crsp['DLRET']==3), -0.55, crsp['DLRET'])
-    print("Set the delisting return to be -30% for NYSE and AMEX stocks and -55% for NASDAQ stocks.")
+    logging.info("Set the delisting return to be -30% for NYSE and AMEX stocks and -55% for NASDAQ stocks.")
 
     # Set the NaN returns to 0 and coerce the delisting returns to numeric types.
     crsp['DelRet'] = crsp['DLRET'].fillna(0)
     crsp['DelRet'] = pd.to_numeric(crsp['DelRet'], errors='coerce')
     crsp['MthRet'] = crsp['MthRet'].fillna(0)
-    print("Set the NaN returns to 0 and coerced the delisting returns to numeric types.")
+    logging.info("Set the NaN returns to 0 and coerced the delisting returns to numeric types.")
 
     # Calculate the delisting adjusted-returns.
     crsp['retadj'] = (1 + crsp['MthRet']) * (1 + crsp['DelRet']) - 1
-    print("Calculated the delisting adjusted-returns.")
+    logging.info("Calculated the delisting adjusted-returns.")
 
     # Calculate market equity.
     crsp['me'] = crsp['MthPrc'].abs() * crsp['ShrOut']
-    print("Calculated market equity.")
+    logging.info("Calculated market equity.")
 
     # Remove unnecessary columns.
     crsp = crsp.drop(['DelRet', 'DLRET', 'DLSTDT', 'MthPrc', 'ShrOut'], axis=1)
-    print("Removed unnecessary columns.")
+    logging.info("Removed unnecessary columns.")
 
     # Sort the values by company code (jdate, PERMCO) and then market equity.
     crsp = crsp.sort_values(by=['jdate', 'PERMCO', 'me'])
-    print("Sorted the values by company code (jdate, PERMCO) and then market equity.")
+    logging.info("Sorted the values by company code (jdate, PERMCO) and then market equity.")
 
     # Sum the market caps for different securities (PERMNO) within the same company (PERMCO) for each date.
     crsp_summe = crsp.groupby(['jdate', 'PERMCO'])['me'].sum().reset_index()
-    print("Summed the market caps for different securities (PERMNO) within the same company (PERMCO) for each date.")
+    logging.info("Summed the market caps for different securities (PERMNO) within the same company (PERMCO) for each date.")
 
     # Find the largest market cap for a given date and PERMCO.
     crsp_maxme = crsp.groupby(['jdate', 'PERMCO'])['me'].max().reset_index()
-    print("Found the largest market cap for a given date and PERMCO.")
+    logging.info("Found the largest market cap for a given date and PERMCO.")
 
     # Merge the max market cap dataframe with our CRSP dataframe such that each company / date pair aligns with the max market cap, in essence, only keeping the primary security.
     crsp1 = pd.merge(crsp, crsp_maxme, how='inner', on=['jdate', 'PERMCO', 'me'])
-    print("Merged the max market cap dataframe with our CRSP dataframe.")
+    logging.info("Merged the max market cap dataframe with our CRSP dataframe.")
 
     # Drop the market equity column.
     crsp1 = crsp1.drop(['me'], axis=1)
-    print("Dropped the market equity column.")
+    logging.info("Dropped the market equity column.")
 
     # Merge the summed market cap dataframe with the dataframe 'crsp1' which has the primary securities, such that the summed market cap is assigned to the primary security.
     crsp2 = pd.merge(crsp1, crsp_summe, how='inner', on=['jdate', 'PERMCO'])
-    print("Merged the summed market cap dataframe with the dataframe 'crsp1'.")
+    logging.info("Merged the summed market cap dataframe with the dataframe 'crsp1'.")
 
     # Sort by PERMNO and then date, and after that, drop the duplicates.
     crsp2 = crsp2.sort_values(by=['PERMNO', 'jdate']).drop_duplicates()
-    print("Sorted by PERMNO and then date, and after that, dropped the duplicates.")
+    logging.info("Sorted by PERMNO and then date, and after that, dropped the duplicates.")
 
     # Create columns representing the year and the month.
     crsp2['year'] = crsp2['jdate'].dt.year
     crsp2['month'] = crsp2['jdate'].dt.month
-    print("Created columns representing the year and the month.")
+    logging.info("Created columns representing the year and the month.")
 
     # Create a new dataframe with only the December data.
     decme = crsp2[crsp2['month'] == 12]
-    print("Created a new dataframe with only the December data.")
+    logging.info("Created a new dataframe with only the December data.")
 
     # Keep only the essential columns and then rename 'me' to 'dec_me'.
     decme = decme[['PERMNO', 'MthCalDt', 'jdate', 'me', 'year']].rename(columns={'me': 'dec_me'})
-    print("Kept only the essential columns and then renamed 'me' to 'dec_me'.")
+    logging.info("Kept only the essential columns and then renamed 'me' to 'dec_me'.")
 
     # Create columns for the Fama-French date, year, and month.
     crsp2['ffdate'] = crsp2['jdate'] + MonthEnd(-6)
     crsp2['ffyear'] = crsp2['ffdate'].dt.year
     crsp2['ffmonth'] = crsp2['ffdate'].dt.month
-    print("Created columns for the Fama-French date, year, and month.")
+    logging.info("Created columns for the Fama-French date, year, and month.")
 
     # Create a columnn '1+retx' for ease of calculations.
     crsp2['1+retx'] = 1 + crsp2['MthRetx']
-    print("Created a column '1+retx' for ease of calculations.")
+    logging.info("Created a column '1+retx' for ease of calculations.")
 
     # Create a column for the cumulative return of each stock in each Fama-French year.
     crsp2['cumretx'] = crsp2.groupby(['PERMNO', 'ffyear'])['1+retx'].cumprod()
-    print("Created a column for the cumulative return of each stock in each Fama-French year.")
+    logging.info("Created a column for the cumulative return of each stock in each Fama-French year.")
 
     # Create a column for the lagged cumulative return.
     crsp2['lcumretx'] = crsp2.groupby(['PERMNO'])['cumretx'].shift(1)
-    print("Created a column for the lagged cumulative return.")
+    logging.info("Created a column for the lagged cumulative return.")
 
     # Sort the dataframe by company and then date.
     crsp2 = crsp2.sort_values(by=['PERMNO', 'MthCalDt'])
-    print("Sorted the dataframe by company and then date.")
+    logging.info("Sorted the dataframe by company and then date.")
 
     # Create a column for the lagged market cap.
     crsp2['lme'] = crsp2.groupby(['PERMNO'])['me'].shift(1)
-    print("Created a column for the lagged market cap.")
+    logging.info("Created a column for the lagged market cap.")
 
     # Create a count column which equals the number of times that company has appeared in the dataframe.
     crsp2['count'] = crsp2.groupby(['PERMNO']).cumcount()
-    print("Created a count column which equals the number of times that company has appeared in the dataframe.")
+    logging.info("Created a count column which equals the number of times that company has appeared in the dataframe.")
 
     # If this is the first time the company appears in the dataframe, then we need to input the correct lagged market cap, else, we should stick with the current lagged market cap.
     crsp2['lme'] = np.where(crsp2['count'] == 0, crsp2['me'] / crsp2['1+retx'], crsp2['lme'])
-    print("If this is the first time the company appears in the dataframe, then we need to input the correct lagged market cap, else, we should stick with the current lagged market cap.")
+    logging.info("If this is the first time the company appears in the dataframe, then we need to input the correct lagged market cap, else, we should stick with the current lagged market cap.")
 
     # Create a new dataframe that only includes months at the beginning of a Fama-French year.
     mebase = crsp2[crsp2['ffmonth'] == 1][['PERMNO', 'ffyear', 'lme']].rename(columns={'lme': 'mebase'})
-    print("Created a new dataframe that only includes months at the beginning of a Fama-French year.")
+    logging.info("Created a new dataframe that only includes months at the beginning of a Fama-French year.")
 
     # Merge in the 'mebase' dataframe into our main 'crsp2' dataframe.
     crsp3 = pd.merge(crsp2, mebase, how='left', on=['PERMNO', 'ffyear'])
-    print("Merged in the 'mebase' dataframe into our main 'crsp2' dataframe.")
+    logging.info("Merged in the 'mebase' dataframe into our main 'crsp2' dataframe.")
 
     # Create a weight column that equals the lagged market equity for any given month.
     crsp3['wt'] = np.where(crsp3['ffmonth'] == 1, crsp3['lme'], crsp3['mebase'] * crsp3['lcumretx'])
-    print("Created a weight column that equals the lagged market equity for any given month.")
+    logging.info("Created a weight column that equals the lagged market equity for any given month.")
 
     # Increment the year column by 1.
     decme['year'] = decme['year'] + 1
-    print("Incremented the year column by 1.")
+    logging.info("Incremented the year column by 1.")
 
     # Keep only the essential columns.
     decme = decme[['PERMNO', 'year', 'dec_me']]
-    print("Kept only the essential columns.")
+    logging.info("Kept only the essential columns.")
 
     # Create a dataframe with only the data from June.
     crsp3_jun = crsp3[crsp3['month'] == 6]
-    print("Created a dataframe with only the data from June.")
+    logging.info("Created a dataframe with only the data from June.")
 
     # Merge the June and December dataframes.
     crsp_jun = pd.merge(crsp3_jun, decme, how='inner', on=['PERMNO', 'year'])
-    print("Merged the June and December dataframes.")
+    logging.info("Merged the June and December dataframes.")
 
     # Keep only the essential columns.
     crsp_jun = crsp_jun[['PERMNO', 'MthCalDt', 'jdate', 'SHRCD', 'EXCHCD', 'retadj', 'me', 'wt', 'cumretx', 'mebase', 'lme', 'dec_me']]
-    print("Kept only the essential columns.")
+    logging.info("Kept only the essential columns.")
 
     # Sort the June dataframe by PERMNO and then date, and after that, drop the duplicates.
     crsp_jun = crsp_jun.sort_values(by=['PERMNO', 'jdate']).drop_duplicates()
-    print("Sorted the June dataframe by PERMNO and then date, and after that, dropped the duplicates.")
+    logging.info("Sorted the June dataframe by PERMNO and then date, and after that, dropped the duplicates.")
 
-    # Save the dataframea to csv files.
+    # Save the dataframe to csv files.
     crsp_jun.to_csv('data/processed_crsp_jun.csv', index=False)
     crsp3.to_csv('data/processed_crsp_data.csv', index=False)
-    print("Saved the dataframe to csv files.")
+    logging.info("Saved the dataframe to csv files.")
 
 
-def process_ccm_data():
+def process_ccm_data(logging_enabled: bool = True):
     """
     Helper function to process CCM data.
     """
+
+    # Set up logging.
+    setup_logging(logging_enabled=True)
 
     # Read in the csv files.
     ccm = pd.read_csv('data/raw_crsp_compustat_linking_table.csv', usecols=['gvkey', 'LPERMNO', 'LINKTYPE', 'LINKPRIM', 'LINKDT', 'LINKENDDT'], parse_dates=['LINKDT', 'LINKENDDT'])
     comp = pd.read_csv('data/processed_comp_funda.csv')
     crsp_jun = pd.read_csv('data/processed_crsp_jun.csv', parse_dates=['jdate'])
-    print("Read in the csv files.")
+    logging.info("Read in the csv files.")
 
     # Keep only the primary securities.
     ccm = ccm[(ccm['LINKPRIM'] == 'C') | (ccm['LINKPRIM'] == 'P')]
-    print("Kept only the primary securities.")
+    logging.info("Kept only the primary securities.")
 
     # Rename LPERMNO to PERMNO to be consistent with the other dataframes.
     ccm = ccm.rename(columns={'LPERMNO': 'PERMNO'})
-    print("Renamed LPERMNO to PERMNO.")
+    logging.info("Renamed LPERMNO to PERMNO.")
 
     # If the stock still trades, set the date to NaN.
     ccm['LINKENDDT'] = ccm['LINKENDDT'].replace('E', np.nan)
-    print("If the stock still trades, set the date to NaN.")
+    logging.info("If the stock still trades, set the date to NaN.")
 
     # If the LINKENDDT is NaN, then we set it to today's date.
     ccm['LINKENDDT'] = ccm['LINKENDDT'].fillna(pd.to_datetime('today'))
-    print("If the LINKENDDT is NaN, then we set it to today's date.")
+    logging.info("If the LINKENDDT is NaN, then we set it to today's date.")
 
     # Merge the Compustat data with the CRSP linking table.
     ccm1 = pd.merge(comp, ccm, how='left', on=['gvkey'])
-    print("Merged the Compustat data with the CRSP linking table.")
+    logging.info("Merged the Compustat data with the CRSP linking table.")
 
     # Parse the date columns as datetime objects.
     ccm1['datadate'] = pd.to_datetime(ccm1['datadate'])
     ccm1['LINKENDDT'] = pd.to_datetime(ccm1['LINKENDDT'])
-    print("Parsed the date columns as datetime objects.")
+    logging.info("Parsed the date columns as datetime objects.")
 
     # Create yearend and June date columns.
     ccm1['yearend'] = ccm1['datadate'] + YearEnd(0)
     ccm1['jdate'] = ccm1['yearend'] + MonthEnd(6)
-    print("Created yearend and June date columns.")
+    logging.info("Created yearend and June date columns.")
 
     # Set the link date bounds and create a copy of the dataframe.
     ccm2 = ccm1[(ccm1['jdate'] >= ccm1['LINKDT']) & (ccm1['jdate'] <= ccm1['LINKENDDT'])].copy()
-    print("Set the link date bounds and created a copy of the dataframe.")
+    logging.info("Set the link date bounds and created a copy of the dataframe.")
 
     # Drop the unnecessary columns.
     ccm2.drop(['LINKPRIM', 'LINKTYPE', 'LINKDT', 'LINKENDDT'], axis=1, inplace=True)
-    print("Dropped the unnecessary columns.")
+    logging.info("Dropped the unnecessary columns.")
 
     # Change the variable type to int.
     crsp_jun['PERMNO'] = crsp_jun['PERMNO'].astype(int)
     ccm2['PERMNO'] = ccm2['PERMNO'].astype(int)
-    print("Changed the variable type to int.")
+    logging.info("Changed the variable type to int.")
 
     # Parse the June date column as a datetime object.
     ccm2['jdate'] = pd.to_datetime(ccm2['jdate'])
-    print("Parsed the June date column as a datetime object.")
+    logging.info("Parsed the June date column as a datetime object.")
 
     # Merge the combined CRSP linking table and Compustat data with the CRSP june date.
     ccm_jun = pd.merge(crsp_jun, ccm2, how='inner', on=['PERMNO', 'jdate'])
-    print("Merged the combined CRSP linking table and Compustat data with the CRSP june date.")
+    logging.info("Merged the combined CRSP linking table and Compustat data with the CRSP june date.")
 
     # Save the dataframe to a csv.
     ccm_jun.to_csv('data/processed_crsp_jun1.csv', index=False)
-    print("Saved the dataframe to a csv.")
+    logging.info("Saved the dataframe to a csv.")
 
 
-def process_data():
+def process_data(logging_enabled: bool = True):
     """
     This script calls the functions to process Compustat, CRSP, and CCM data.
     """
 
     # Process Compustat data.
     start_time = time.time()
-    process_compustat_data()
+    process_compustat_data(logging_enabled=logging_enabled)
     elapsed_time = time.time() - start_time
-    print(f"Processed Compustat data in {elapsed_time:.2f} seconds.")
+    print(f"Processed Compustat Data in {elapsed_time:.2f} seconds.")
 
     # Process CRSP data.
     start_time = time.time()
-    process_crsp_data()
+    process_crsp_data(logging_enabled=logging_enabled)
     elapsed_time = time.time() - start_time
-    print(f"Processed CRSP data in {elapsed_time:.2f} seconds.")
+    print(f"Processed CRSP Data in {elapsed_time:.2f} seconds.")
 
     # Process CCM data.
     start_time = time.time()
-    process_ccm_data()
+    process_ccm_data(logging_enabled=logging_enabled)
     elapsed_time = time.time() - start_time
-    print(f"Processed CCM data in {elapsed_time:.2f} seconds.")
+    print(f"Processed CCM Data in {elapsed_time:.2f} seconds.")

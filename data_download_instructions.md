@@ -1,10 +1,10 @@
-# Data Extraction Instructions
+# Data Download Instructions
 
-## Link to data: [WRDS Compustat Fundamentals Annual](https://wrds-www.wharton.upenn.edu/pages/get-data/compustat-capital-iq-standard-poors/compustat/north-america-daily/fundamentals-annual)
+## Download this dataset: [WRDS Compustat Fundamentals Annual](https://wrds-www.wharton.upenn.edu/pages/get-data/compustat-capital-iq-standard-poors/compustat/north-america-daily/fundamentals-annual)
 
 ### Select:
 - **Choose your date range:**
-  - `datedate`, `1957-01`, `2022-12`
+  - `datedate`, `1950-06`, `2023-12`
 - **Apply your company codes:**
   - Search the entire database
 - **Screening Variables (Select at least one per line):**
@@ -19,30 +19,32 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press `Submit Form`**
+- **Download the Output File**
 
-### Save as: `data/raw_compustat_fundamentals_annual.csv`
-1.3 GBs
+### Drag and drop the file into the `data` folder and save it as `raw_compustat_fundamentals_annual.csv`
 
 ---
 
-## Link to data: [WRDS CRSP Monthly Stock File](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/monthly-stock-file)
+## Download this dataset: [WRDS CRSP Monthly Stock File](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-version-2/monthly-stock-file)
 
 ### Select:
 - **Choose your date range:**
-  - `1958-07-31`, `2022-12-30`
+  - `1925-12-31`, `2023-12-29`
 - **Apply your company codes:**
   - Search the entire database
 - **Choose your query variables:**
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press `Submit Form`**
+- **Download the Output File**
 
-### Save as: `data/raw_crsp_monthly_stock_files.csv`
-2.1 GBs
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_monthly_stock_files.csv`
 
 ---
 
-## Link to data: [WRDS CRSP Names](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-events/names)
+## Download this dataset: [WRDS CRSP Names](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-events/names)
 
 ### Select:
 - **Apply your company codes:**
@@ -51,33 +53,34 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press `Submit Form`**
+- **Download the Output File**
 
-### Save as: `data/raw_crsp_historical_descriptive_information.csv`
-12 MBs
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_historical_descriptive_information.csv`
 
 ---
 
-## Link to data: [WRDS CRSP Delistings](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-events/delist)
+## Download this dataset: [WRDS CRSP Delistings](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/stock-events/delist)
 
 ### Select:
 - **Choose your date range:**
-  - `1926-02`, `2022-12`
+  - `1926-02`, `2023-12`
 - **Apply your company codes:**
   - Search the entire database
 - **Choose delisting codes for Delisting events:**
-  - `Active (`100-199)`, `Mergers (200-299)`, `Exchanges (300-399)`, `Liquidations (400-499)`, `Dropped (500-599)`, `Expirations (600-699)`, `Domestics that became Foreign (900-999)`
+  - `Active (100-199)`, `Mergers (200-299)`, `Exchanges (300-399)`, `Liquidations (400-499)`, `Dropped (500-599)`, `Expirations (600-699)`, `Domestics that became Foreign (900-999)`
 - **Choose query variables:**
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press `Submit Form`**
+- **Download the Output File**
 
-### Save as: `data/raw_crsp_delisting_information.csv`
-2.8 MBs
-- Note: There are some errors redownloading this data. It is unclear what is causing them as this worked before.
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_delisting_information.csv`
 
 ---
 
-## Link to data: [WRDS CRSP/Compustat Merged](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/crspcompustat-merged/compustat-crsp-link)
+## Download this dataset: [WRDS CRSP/Compustat Merged](https://wrds-www.wharton.upenn.edu/pages/get-data/center-research-security-prices-crsp/annual-update/crspcompustat-merged/compustat-crsp-link)
 
 ### Select:
 - **Apply your company codes:**
@@ -88,6 +91,7 @@
   - Select -> `All`
 - **Select query output:**
   - `csv`, `Uncompressed`, `YYYY-MM-DD`
+- **Press `Submit Form`**
+- **Download the Output File**
 
-### Save as: `data/raw_crsp_compustat_linking_table.csv`
-14.2 MBs
+### Drag and drop the file into the `data` folder and save it as `raw_crsp_compustat_linking_table.csv`
