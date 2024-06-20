@@ -130,7 +130,7 @@ def process_compustat_data(logging_enabled: bool = True):
     logging.info("Created a 'AT' column.")
 
     # AT_GR1 = percentage change in AT.
-    comp['AT_GR1'] = comp.groupby('gvkey')['AT'].pct_change()
+    comp['AT_GR1'] = comp.groupby('gvkey')['AT'].pct_change(fill_method=None)
     logging.info("Created a 'AT_GR1' column.")
 
     # Save the dataframe to a csv.
