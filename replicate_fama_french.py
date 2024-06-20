@@ -531,7 +531,7 @@ def compute_umd(logging_enabled: bool = True):
     logging.info("Read in the CRSP data.")
 
     # Calculate momentum.
-    crsp3['MOMENTUM'] = crsp3.groupby('PERMNO')['retadj'].apply(lambda x: x.shift(2).rolling(window=11, min_periods=11).mean())
+    crsp3['MOMENTUM'] = crsp3.groupby('PERMNO')['retadj'].apply(lambda x: x.shift(2).rolling(window=11, min_periods=11).mean()).reset_index(level=0, drop=True)
     logging.info("Calculated momentum.")
 
     # Select the universe NYSE common stocks with positive market equity.
