@@ -95,7 +95,7 @@ def create_original_mom_transition_table(
     Creates a transition table for the momentum portfolios.
 
     Args:
-        num_quantiles (int):
+        quantiles (int):
             The number of quantiles to use for portfolio formation.
         lookback_period (int):
             The lookback period for calculating momentum.
@@ -113,84 +113,71 @@ def create_original_mom_transition_table(
     # Set up logging.
     setup_logging(logging_enabled)
 
-    # Read in the csv file.
+    logging.info("Reading in the csv files...")
     crsp3 = pd.read_csv('data/processed_crsp_data.csv', usecols=['PERMNO', 'retadj', 'jdate', 'me', 'wt', 'SHRCD', 'EXCHCD', 'count'], parse_dates=['jdate'])
-    logging.info("Read in the CRSP data.")
 
-    # Calculate momentum.
-    crsp3['MOMENTUM'] = crsp3.groupby('PERMNO')['retadj'].apply(lambda x: x.shift(lag + 1).rolling(window=lookback_period - lag, min_periods=lookback_period - lag).mean())
-    logging.info("Calculated momentum.")
+    logging.info("Calculating momentum...")
+    crsp3['MOMENTUM'] = crsp3.groupby('PERMNO')['retadj'].apply(lambda x: x.shift(lag + 1).rolling(window=lookback_period - lag, min_periods=lookback_period - lag).mean()).reset_index(level=0, drop=True)
 
-    # Select the universe of common stocks with positive market equity.
+    logging.info("Selecting the universe of stocks...")
     universe = crsp3[(crsp3['me'] > 0) &
                     (crsp3['count'] >= 1) &
                     ((crsp3['SHRCD'] == 10) | (crsp3['SHRCD'] == 11))]
-    logging.info("Selected the universe of stocks.")
 
+    # If nyse_only is True, select only NYSE common stocks.
     if nyse_only:
         universe = crsp3[(crsp3['EXCHCD'] == 1)]
-        logging.info("Selected only NYSE common stocks.")
 
-    # Get the MOMENTUM quantile breakpoints for each month.
+    logging.info("Getting the MOMENTUM quantile breakpoints...")
     percentiles = [i * 100 / quantiles for i in range(1, quantiles)]
     universe_mom = universe.groupby(['jdate'])['MOMENTUM'].describe(percentiles=[p / 100 for p in percentiles]).reset_index()
     percentile_columns = [f'{int(p)}%' for p in percentiles]
     universe_mom = universe_mom[['jdate'] + percentile_columns]
-    logging.info("Got the MOMENTUM quantile breakpoints.")
 
-    # Merge the breakpoints with the CRSP data.
+    logging.info("Merging the breakpoints with the CRSP data...")
     crsp4 = pd.merge(crsp3, universe_mom, how='left', on=['jdate'])
-    logging.info("Merged the breakpoints with the CRSP data.")
 
-    # Assign each stock to its proper momentum bucket.
+    logging.info("Assigning each stock to its proper momentum bucket...")
     crsp4['factor_portfolio'] = np.where(
         (crsp4['me'] > 0) & (crsp4['count'] >= 1),
         crsp4.apply(lambda row: quantile_bucket(row, 'MOMENTUM', quantiles), axis=1),
         ''
     )
-    logging.info("Assigned each stock to its proper momentum bucket.")
 
-    # Create a 'valid_data' column that is 1 if company has valid June and December market equity data and has been in the dataframe at least once, and 0 otherwise.
+    logging.info("Creating a 'valid_data' column...")
     crsp4['valid_data'] = np.where(
         (crsp4['me'] > 0) & (crsp4['count'] >= 1),
         1,
         0
     )
-    logging.info("Created a 'valid_data' column.")
 
-    # Create a 'non_missing_portfolio' column that is 1 if the stock has been assigned to a portfolio, and 0 otherwise.
+    logging.info("Creating a 'non_missing_portfolio' column...")
     crsp4['non_missing_portfolio'] = np.where(
         (crsp4['factor_portfolio'] != ''),
         1,
         0
     )
-    logging.info("Created a 'non_missing_portfolio' column.")
 
-    # Keep only the common stocks with a positive weight, valid data, and a non-missing portfolio.
+    logging.info("Keeping only the common stocks with a positive weight, valid data, and a non-missing portfolio...")
     crsp5 = crsp4[(crsp4['wt'] > 0) &
                   (crsp4['valid_data'] == 1) &
                   (crsp4['non_missing_portfolio'] == 1) &
                   ((crsp4['SHRCD'] == 10) | (crsp4['SHRCD'] == 11))]
-    logging.info("Kept only the common stocks with a positive weight, valid data, and a non-missing portfolio.")
 
-    # Drop the columns that are no longer needed.
+    logging.info("Dropping columns and rows with missing values...")
     crsp5 = crsp5[['PERMNO', 'jdate', 'retadj', 'me', 'wt', 'MOMENTUM', 'factor_portfolio']]
     crsp5 = crsp5.dropna(subset=['MOMENTUM'])
-    logging.info("Dropped columns and rows with missing values.")
 
-    # Sort the data by date and PERMNO.
+    logging.info("Sorting the data by date and PERMNO...")
     crsp5 = crsp5.sort_values(by=['PERMNO', 'jdate'])
-    logging.info("Sorted the data by date and PERMNO.")
 
-    # Create a column for the past momentum portfolio assignment.
+    logging.info("Creating a column for the past momentum portfolio assignment...")
     crsp5['past_portfolio'] = crsp5.groupby('PERMNO')['factor_portfolio'].shift(lookback_period)
-    logging.info("Created a column for the past momentum portfolio assignment.")
 
-    # Filter out rows with missing current_portfolio or next_portfolio values.
+    logging.info("Filtering out rows with missing current_portfolio or past_portfolio values...")
     crsp5 = crsp5.dropna(subset=['factor_portfolio', 'past_portfolio'])
-    logging.info("Filtered out rows with missing current_portfolio or past_portfolio values.")
 
-    # Save the data to a csv file.
+    logging.info("Saving the data to a csv file...")
     crsp5.to_csv(f'back_momentum_skewness/data/processed_mom_transitions_{[lookback_period, lag]}_with_{quantiles}_quantiles.csv', index=False)
     logging.info("Saved the data to a csv file.")
 
