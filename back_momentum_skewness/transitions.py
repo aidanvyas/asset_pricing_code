@@ -396,7 +396,7 @@ def calculate_ff_transition_probabilities(
     logging_enabled: bool = True
 ) -> None:
     """
-    This function calculates the transition probabilities between momentum portfolios.
+    This function calculates the transition probabilities between Fama-French factor portfolios.
 
     Args:
         quantiles (int): The number of quantiles to use for portfolio formation.
@@ -506,10 +506,16 @@ def create_ff_multiyear_transition_tables(
     logging.info("Calculated the book to market equity ratio.")
 
     # Calculate multi-year factor excluding the current period.
-    for lag in range(1, 3):
+    for lag in range(1, 6):
         ccm_jun[f'lag{lag}_{factor}'] = ccm_jun.groupby('PERMNO')[factor].shift(lag)
-    ccm_jun[f'multiyear_{factor}'] = ccm_jun[[f'lag{lag}_{factor}' for lag in range(1, 3)]].sum(axis=1)
+        ccm_jun[f'lag{lag}_{factor}'] = ccm_jun[f'lag{lag}_{factor}'].replace([np.inf, -np.inf], np.nan)
+    ccm_jun[f'multiyear_{factor}'] = ccm_jun[[f'lag{lag}_{factor}' for lag in range(1, 6)]].mean(axis=1, skipna=True)
     logging.info(f"Calculated the multi-year {factor} excluding the current period.")
+
+    logging.info("Removing NaN, inf, and -inf values from the factor column...")
+    ccm_jun = ccm_jun[~ccm_jun[f'multiyear_{factor}'].isnull()]
+    ccm_jun = ccm_jun[~np.isinf(ccm_jun[f'multiyear_{factor}'])]
+    ccm_jun = ccm_jun[~np.isneginf(ccm_jun[f'multiyear_{factor}'])]
 
     # Select the universe of common stocks with positive market equity.
     universe = ccm_jun[
@@ -523,6 +529,11 @@ def create_ff_multiyear_transition_tables(
     if nyse_only:
         universe = universe[universe['EXCHCD'] == 1]
         logging.info("Selected only NYSE common stocks.")
+
+    logging.info("Removing NaN, inf, and -inf values from the factor column...")
+    universe = universe[~universe[factor].isnull()]
+    universe = universe[~np.isinf(universe[factor])]
+    universe = universe[~np.isneginf(universe[factor])]
 
     # Get the factor quantile breakpoints for each month for the current portfolios.
     percentiles = [i * 100 / quantiles for i in range(1, quantiles)]
@@ -551,7 +562,7 @@ def create_ff_multiyear_transition_tables(
 
     # Assign each stock to its proper factor bucket for the current portfolio.
     ccm1_jun['factor_portfolio'] = np.where(
-        (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+        (ccm1_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
         ccm1_jun.apply(lambda row: quantile_bucket(row, factor, quantiles), axis=1),
         ''
     )
@@ -559,7 +570,7 @@ def create_ff_multiyear_transition_tables(
 
     # Assign each stock to its proper factor bucket for the past portfolio.
     ccm1_jun['past_factor_portfolio'] = np.where(
-        (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+        (ccm1_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
         ccm1_jun.apply(lambda row: quantile_bucket(row, f'multiyear_{factor}', quantiles), axis=1),
         ''
     )
@@ -567,7 +578,7 @@ def create_ff_multiyear_transition_tables(
 
     # Create a 'valid_data' column that is 1 if company has valid June and December market equity data and has been in the dataframe at least once, and 0 otherwise.
     ccm1_jun['valid_data'] = np.where(
-        (ccm_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
+        (ccm1_jun['dec_me'] > 0) & (ccm1_jun['me'] > 0) & (ccm1_jun['count'] >= 1),
         1,
         0
     )
@@ -619,8 +630,86 @@ def create_ff_multiyear_transition_tables(
     logging.info("Filtered out rows with missing current_portfolio or past_portfolio values.")
 
     # Save the data to a csv file.
-    ccm4.to_csv(f'back_momentum_skewness/data/processed_ff_transitions_{factor}_with_{quantiles}_quantiles_v2.csv', index=False)
+    ccm4.to_csv(f'back_momentum_skewness/data/processed_multiyear_ff_transitions_{factor}_with_{quantiles}_quantiles.csv', index=False)
     logging.info("Saved the data to a csv file.")
+
+
+def calculate_ff_multiyear_transition_probabilities(
+    quantiles: int,
+    factor: str,
+    logging_enabled: bool = True) -> None:
+    """
+    This function calculates the transition probabilities between Fama-French multi-year factor portfolios.
+
+    Args:
+        quantiles (int): The number of quantiles to use for portfolio formation.
+        factor (str): The factor to use for the quantile sorts.
+        logging_enabled (bool): Whether to enable logging.
+    
+    Returns:
+        None
+    """
+
+    # Set up logging.
+    setup_logging(logging_enabled)
+
+    # Read in the csv file.
+    ccm4 = pd.read_csv(f'back_momentum_skewness/data/processed_multiyear_ff_transitions_{factor}_with_{quantiles}_quantiles.csv', parse_dates=['jdate'])
+    logging.info("Read in the csv file.")
+
+    # Set a date restriction from July 1963 to December 2022.
+    ccm4 = ccm4[(ccm4['jdate'] >= '1963-07-01') & (ccm4['jdate'] <= '2022-12-31')]
+    logging.info("Set a date restriction.")
+
+    # Create a column to use as values for the pivot table
+    ccm4['count'] = 1
+    logging.info("Created a column to use as values for the pivot table.")
+
+    # Create a pivot table to calculate the transition counts.
+    transition_counts = pd.pivot_table(ccm4, values='count', index='past_portfolio', columns='factor_portfolio', aggfunc='sum')
+    logging.info("Created a pivot table to calculate the transition counts.")
+
+    # Normalize the transition counts.
+    transition_probs = transition_counts.div(transition_counts.sum(axis=1), axis=0) * 100
+    logging.info("Normalized the transition counts.")
+
+    # Create a LaTeX table.
+    latex_content = [
+        "\\begin{table*}[ht!]",
+        "\\raggedright",
+        "\\refstepcounter{table}",
+        "\\label{tab: multiyear_transition_probs_" + f"{factor}" + "_with_" + str(quantiles) + "_quantiles}",
+        "\\textbf{Table \\thetable} \\\\",
+        "Multiyear transition probabilities for " + f"{factor}" + " with " + str(quantiles) + " quantiles. \\\\",
+        "\\hspace*{1em}" + latex_escape("This sample starts in July 1963, ends in December 2022, and includes all NYSE, AMEX, and NASDAQ common stocks for which we have market equity data for December of year t-1 and June of year t, and book equity data for t-1. The portfolios are constructed on book equity to market equity at the end of each June using quintile breakpoints.  The book equity used in June of year t is the book equity for the last fiscal year end in t-1.  Market equity is calculated at the end of December of year t-1.  More specific definitions can be found in the Appendix.  The data is measured monthly, with all statistics annualized.  1%, 5%, and 10% statistical significance are indicated with ***, **, and *, respectively.") + " \\\\",
+        "\\vspace{0.5em}",
+        "\\centering",
+        "\\begin{adjustbox}{max width=\\textwidth}",
+        "\\begin{tabular}{@{}c" + "c" * quantiles + "@{}}",
+        "\\toprule",
+        "Prior & \\multicolumn{" + str(quantiles) + "}{c}{Current Factor Portfolio} \\\\",
+        "Portfolio & " + " & ".join(transition_probs.columns.astype(str)) + " \\\\",
+        "\\midrule"
+    ]
+
+    for index, row in transition_probs.iterrows():
+        row_str = str(index) + " & " + " & ".join(row.apply(lambda x: f"{x:.2f}\%")) + " \\\\"
+        latex_content.append(row_str)
+
+    latex_content.extend([
+        "\\bottomrule",
+        "\\end{tabular}",
+        "\\end{adjustbox}",
+        "\\end{table*}"
+    ])
+    logging.info("Added the table footer to the LaTeX table.")
+
+    # Join the content and write it to a file.
+    latex_content = "\n".join(latex_content)
+    file_name = f"back_momentum_skewness/tables/multiyear_transition_probs_{factor}_with_{quantiles}_quantiles.tex"
+    with open(file_name, 'w') as f:
+        f.write(latex_content)
+    logging.info(f"Saved the LaTeX table to '{file_name}'.")
 
 
 def create_ff_returns_transition_tables(

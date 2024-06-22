@@ -161,6 +161,26 @@ def perform_ff_quantile_sorts(quantiles: int,
     logging.info("Calculating the book to market equity ratio...")
     ccm_jun['BE_ME'] = ccm_jun['BE'] * 1000 / ccm_jun['dec_me']
 
+    # get the rank of me where the smallest me gets the highest rank
+    logging.info("Calculating the rank of market equity...")
+    ccm_jun['rank_me'] = ccm_jun.groupby('jdate')['me'].rank(ascending=False)
+
+    # get the rank of BE_ME where the smallest BE_ME gets the lowest rank
+    logging.info("Calculating the rank of the book to market equity ratio...")
+    ccm_jun['rank_BE_ME'] = ccm_jun.groupby('jdate')['BE_ME'].rank()
+
+    # get the rank of OP_BE where the smallest OP_BE gets the lowest rank
+    logging.info("Calculating the rank of the operating profit to book equity ratio...")
+    ccm_jun['rank_OP_BE'] = ccm_jun.groupby('jdate')['OP_BE'].rank()
+
+    # get the rank of AT_GR1 where the smallest AT_GR1 gets the highest rank
+    logging.info("Calculating the rank of the asset growth rate...")
+    ccm_jun['rank_AT_GR1'] = ccm_jun.groupby('jdate')['AT_GR1'].rank(ascending=False)
+
+    # add the ranks together to get the multi_rank
+    logging.info("Calculating the multi-factor rank...")
+    ccm_jun['multi_rank'] = ccm_jun['rank_BE_ME'] + ccm_jun['rank_OP_BE'] + ccm_jun['rank_AT_GR1'] + ccm_jun['rank_me']
+
     logging.info("Selecting the universe of stocks...")
     universe = ccm_jun[
         (ccm_jun['me'] > 0) &
@@ -452,7 +472,6 @@ def perform_mom_quantile_sorts(quantiles: int,
     crsp3 = pd.read_csv('data/processed_crsp_data.csv', usecols=['PERMNO', 'retadj', 'jdate', 'me', 'wt', 'SHRCD', 'EXCHCD', 'count'], parse_dates=['jdate'])
 
     logging.info("Calculating the momentum factor...")
-    # with lag and lookback
     crsp3['MOMENTUM'] = crsp3.groupby('PERMNO')['retadj'].apply(lambda x: x.shift(lag + 1).rolling(window=lookback_period - lag, min_periods=lookback_period - lag).mean()).reset_index(level=0, drop=True)
 
     logging.info("Selecting the universe of stocks...")
