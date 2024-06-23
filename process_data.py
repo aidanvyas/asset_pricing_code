@@ -70,7 +70,7 @@ def process_compustat_data(logging_enabled: bool = True):
     setup_logging(logging_enabled)
 
     # Read in the csv file.
-    comp = pd.read_csv('data/raw_compustat_fundamentals_annual.csv', parse_dates=['datadate'], usecols=['gvkey', 'datadate', 'pstkrv', 'pstkl', 'pstk', 'seq', 'ceq', 'at', 'lt', 'txditc', 'txdb', 'itcb', 'sale', 'revt', 'xopr', 'cogs', 'xsga', 'gp', 'ebitda', 'oibdp', 'xint', 'dltt', 'lct', 'lo'])
+    comp = pd.read_csv('data/raw_compustat_fundamentals_annual.csv', parse_dates=['datadate'], usecols=['gvkey', 'datadate', 'pstkrv', 'pstkl', 'pstk', 'seq', 'ceq', 'at', 'lt', 'txditc', 'txdb', 'itcb', 'sale', 'revt', 'xopr', 'cogs', 'xsga', 'gp', 'ebitda', 'oibdp', 'xint', 'dltt', 'lct', 'lo', 'sic'])
     logging.info("Read in the csv file.")
 
     # Create a year column.
