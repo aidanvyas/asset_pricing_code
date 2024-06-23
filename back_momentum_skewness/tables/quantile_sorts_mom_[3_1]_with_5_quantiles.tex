@@ -1,0 +1,32 @@
+\begin{table*}[ht!]
+\raggedright
+\refstepcounter{table}
+\label{tab: quantile_sort_mom_[3_1]_with_5_quantiles}
+\textbf{Table \thetable} \\
+Portfolio sorts on [3\_1] momentum with 5 quantiles. \\
+\hspace*{1em}This sample starts in July 1963, ends in December 2022, and includes all NYSE, AMEX, and NASDAQ common stocks for which we have market equity data for December of year t-1 and June of year t, and book equity data for t-1. The portfolios are constructed on momentum calculated over the last 12 months, skipping the most recent month. The momentum is calculated as the average of the past 12 months' returns, excluding the most recent month. The data is measured monthly, with all statistics annualized.  1\%, 5\%, and 10\% statistical significance are indicated with ***, **, and *, respectively. \\
+\vspace{0.5em}
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & Low & 2 & 3 & 4 & High & High-Low \\
+\midrule
+Total Return & 8.46\%*** & 13.05\%*** & 12.02\%*** & 11.56\%*** & 13.66\%*** & 4.83\%** \\
+ & [2.63] & [5.44] & [5.72] & [5.50] & [5.09] & [1.97] \\
+Excess Return & 3.87\% & 8.28\%*** & 7.29\%*** & 6.85\%*** & 8.87\%*** & 4.83\%** \\
+ & [1.23] & [3.52] & [3.53] & [3.31] & [3.36] & [1.97] \\
+Volatility & 23.94\% & 17.52\% & 15.42\% & 15.48\% & 19.58\% & 18.49\% \\
+Skew & -0.04 & -0.11 & -0.29 & -0.46 & -0.26 & -0.18 \\
+Kurtosis & 3.29 & 2.47 & 2.13 & 2.06 & 2.12 & 8.97 \\
+Sharpe Ratio & 0.16 & 0.47 & 0.47 & 0.44 & 0.45 & 0.26 \\
+CAPM Alpha & -4.89\%*** & 1.08\% & 0.76\% & 0.38\% & 1.30\% & 6.47\%*** \\
+ & [-3.23] & [1.30] & [1.45] & [0.64] & [1.04] & [2.66] \\
+Market Beta & 1.33 & 1.05 & 0.96 & 0.95 & 1.10 & -0.24 \\
+Tracking Error & 11.85\% & 6.36\% & 4.02\% & 4.48\% & 9.51\% & 18.12\% \\
+Appraisal Ratio & -0.41 & 0.17 & 0.19 & 0.08 & 0.14 & 0.36 \\
+Total Capitalization & 8.82\% & 21.04\% & 27.41\% & 27.98\% & 14.77\% &  \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

@@ -1,0 +1,32 @@
+\begin{table*}[ht!]
+\raggedright
+\refstepcounter{table}
+\label{tab: quantile_sortmulti_rank_with_5_quantiles}
+\textbf{Table \thetable} \\
+Portfolio sorts on multi\_rank with 5 quantiles. \\
+\hspace*{1em}This sample starts in July 1963, ends in December 2022, and includes all NYSE, AMEX, and NASDAQ common stocks for which we have market equity data for December of year t-1 and June of year t, and book equity data for t-1. The portfolios are constructed on book equity to market equity at the end of each June using quintile breakpoints.  The book equity used in June of year t is the book equity for the last fiscal year end in t-1.  Market equity is calculated at the end of December of year t-1.  More specific definitions can be found in the Appendix.  The data is measured monthly, with all statistics annualized.  1\%, 5\%, and 10\% statistical significance are indicated with ***, **, and *, respectively. \\
+\vspace{0.5em}
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & Low & 2 & 3 & 4 & High & High-Low \\
+\midrule
+Total Return & 10.48\%*** & 11.96\%*** & 12.97\%*** & 15.75\%*** & 19.39\%*** & 8.13\%*** \\
+ & [4.48] & [5.94] & [6.29] & [6.89] & [6.86] & [4.31] \\
+Excess Return & 5.81\%** & 7.24\%*** & 8.21\%*** & 10.87\%*** & 14.37\%*** & 8.13\%*** \\
+ & [2.53] & [3.66] & [4.05] & [4.85] & [5.18] & [4.31] \\
+Volatility & 17.28\% & 14.78\% & 15.07\% & 16.49\% & 20.11\% & 14.05\% \\
+Skew & -0.34 & -0.49 & -0.43 & -0.37 & -0.32 & 0.30 \\
+Kurtosis & 1.49 & 2.31 & 2.64 & 3.35 & 3.57 & 2.38 \\
+Sharpe Ratio & 0.34 & 0.49 & 0.54 & 0.66 & 0.71 & 0.58 \\
+CAPM Alpha & -1.41\%** & 1.00\%* & 1.99\%*** & 4.25\%*** & 6.62\%*** & 8.14\%*** \\
+ & [-2.53] & [1.88] & [2.74] & [4.22] & [4.40] & [4.28] \\
+Market Beta & 1.07 & 0.91 & 0.90 & 0.94 & 1.07 & -0.00 \\
+Tracking Error & 4.29\% & 4.04\% & 5.51\% & 7.56\% & 11.18\% & 14.05\% \\
+Appraisal Ratio & -0.33 & 0.25 & 0.36 & 0.55 & 0.58 & 0.56 \\
+Total Capitalization & 41.82\% & 27.50\% & 17.73\% & 9.72\% & 3.27\% &  \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}
